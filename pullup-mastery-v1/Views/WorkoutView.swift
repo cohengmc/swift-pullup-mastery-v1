@@ -38,13 +38,6 @@ struct WorkoutView: View {
         }
         .navigationTitle(workoutType.rawValue)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button("Cancel") {
-                    dismiss()
-                }
-            }
-        }
         .onAppear {
             createNewWorkout()
         }

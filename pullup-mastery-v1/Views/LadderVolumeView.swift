@@ -17,6 +17,7 @@ struct LadderVolumeView: View {
     @State private var completedLadders: [Int] = [] // Array of max reps reached in each ladder
     @State private var isResting = false
     @State private var currentLadderReps: [Int] = [] // Track individual reps in current ladder
+    @State private var manuallyCompleted = false // Track if user manually completed rest
     
     private let totalLadders = 5
     private let restTime = 30 // 30 seconds
@@ -24,7 +25,7 @@ struct LadderVolumeView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Set progress at top with improved spacing
-            LadderSetProgressView(
+            SetProgressView(
                 currentLadder: currentLadder,
                 totalLadders: totalLadders,
                 completedLadders: completedLadders,
@@ -44,46 +45,49 @@ struct LadderVolumeView: View {
                                 .font(.system(size: 72, weight: .thin))
                                 .foregroundColor(.blue)
                             
-                            Text("Next: \(currentRepInLadder) Rep\(currentRepInLadder == 1 ? "" : "s")")
+                            Text("Next: \(currentRepInLadder + 1) Rep\(currentRepInLadder + 1 == 1 ? "" : "s")")
                                 .font(.title2)
                                 .fontWeight(.medium)
                                 .foregroundColor(.secondary)
                         }
                         
                         // 30-second timer with improved UI
-                        SimpleCountdownTimer(initialTime: restTime) {
-                            withAnimation {
-                                isResting = false
+                        SimpleCountdownTimer(initialTime: restTime, showFastForward: true) {
+                            // Timer completed - advance automatically if not manually completed
+                            if !manuallyCompleted {
+                                withAnimation {
+                                    currentRepInLadder += 1
+                                    isResting = false
+                                }
                             }
+                        }
+                        
+                        Button(action: completeLadder) {
+                            Text("Set Complete")
+                                .font(.system(size: 18))
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 28)
+                                .padding(.vertical, 12)
+                                .background(.green)
+                                .clipShape(Capsule())
                         }
                     }
                 } else {
                     // Active rep phase (matching third image layout)
                     VStack(spacing: 40) {
                         VStack(spacing: 12) {
-                            Text("\(currentRepInLadder)")
+                            Text("\(currentRepInLadder) Rep\(currentRepInLadder == 1 ? "" : "s")")
                                 .font(.system(size: 100, weight: .thin))
                                 .foregroundColor(.blue)
+            
                             
-                            Text("Rep\(currentRepInLadder == 1 ? "" : "s")")
-                                .font(.system(size: 72, weight: .thin))
-                                .foregroundColor(.blue)
-                            
-                            HStack(spacing: 20) {
-                                Button(action: failCurrentRep) {
-                                    Text("Can't Complete")
-                                        .font(.title3)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 28)
-                                        .padding(.vertical, 12)
-                                        .background(.red)
-                                        .clipShape(Capsule())
-                                }
+                            VStack(spacing: 20) {
+                                
                                 
                                 Button(action: completeCurrentRep) {
                                     Text("Rep Complete")
-                                        .font(.title2)
+                                        .font(.title)
                                         .fontWeight(.semibold)
                                         .foregroundColor(.white)
                                         .padding(.horizontal, 32)
@@ -91,31 +95,11 @@ struct LadderVolumeView: View {
                                         .background(.blue)
                                         .clipShape(Capsule())
                                 }
-                            }
-                            
-                            Text("Next: 30s Rest")
-                                .font(.title3)
-                                .fontWeight(.medium)
-                                .foregroundColor(.secondary)
-                                .padding(.top, 8)
-                        }
-                        
-                        // Preview timer (inactive state)
-                        ZStack {
-                            Circle()
-                                .stroke(.gray.opacity(0.3), lineWidth: 12)
-                                .frame(width: 180, height: 180)
-                            
-                            VStack {
-                                Text("0:30")
-                                    .font(.system(size: 36, weight: .bold, design: .default))
-                                    .monospacedDigit()
-                                    .foregroundColor(.secondary)
                                 
-                                Text("Rest")
-                                    .font(.title3)
-                                    .foregroundColor(.secondary)
+                                
                             }
+                            
+
                         }
                     }
                 }
@@ -151,10 +135,12 @@ struct LadderVolumeView: View {
         
         HapticManager.shared.success()
         
+        // Reset manual completion flag and move to rest phase
+        manuallyCompleted = false
+        
         // Move to rest phase, then next rep
         withAnimation {
             isResting = true
-            currentRepInLadder += 1
         }
         
         // Check if ladder is complete (when user can't complete next rep target)
@@ -164,15 +150,23 @@ struct LadderVolumeView: View {
         }
     }
     
-    private func failCurrentRep() {
-        // User failed to complete the current rep - end this ladder
-        HapticManager.shared.error()
-        completeLadder()
+    private func completeRest() {
+        // User manually completed rest period
+        HapticManager.shared.success()
+        manuallyCompleted = true
+        
+        withAnimation {
+            currentRepInLadder += 1
+            isResting = false
+        }
     }
     
     private func completeLadder() {
-        // Calculate total reps for this ladder (1+2+3+...+max)
-        let maxReps = currentLadderReps.count
+        // User is finishing the current ladder
+        HapticManager.shared.success()
+        
+        // Calculate max reps for this ladder based on completed rep levels
+        let maxReps = max(1, currentLadderReps.count)
         completedLadders.append(maxReps)
         
         if currentLadder < totalLadders {
@@ -182,10 +176,14 @@ struct LadderVolumeView: View {
                 currentRepInLadder = 1
                 currentLadderReps = []
                 isResting = false
+                manuallyCompleted = false
             }
         } else {
             // All ladders complete
-            currentLadder += 1
+            withAnimation {
+                currentLadder += 1
+                manuallyCompleted = false
+            }
         }
     }
 }
@@ -242,7 +240,7 @@ struct LadderSetView: View {
         VStack(spacing: 24) {
             // Current ladder and rep info
             VStack(spacing: 8) {
-                Text("Ladder \(ladderNumber)/5")
+                Text("Set \(ladderNumber)/5")
                     .font(.title)
                     .fontWeight(.bold)
                 

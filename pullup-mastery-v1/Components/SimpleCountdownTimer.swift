@@ -23,37 +23,38 @@ struct SimpleCountdownTimer: View {
     var body: some View {
         VStack(spacing: 20) {
             // Timer display only - no controls (full-width design)
-            ZStack {
-                Circle()
-                    .stroke(.gray.opacity(0.3), lineWidth: 16)
-                    .frame(maxWidth: .infinity, maxHeight: 320)
-                    .aspectRatio(1, contentMode: .fit)
-                
-                Circle()
-                    .trim(from: 0, to: timerManager.progress)
-                    .stroke(.blue, style: StrokeStyle(lineWidth: 28, lineCap: .round))
-                    .frame(maxWidth: .infinity, maxHeight: 320)
-                    .aspectRatio(1, contentMode: .fit)
-                    .rotationEffect(.degrees(-90))
-                    .animation(.linear(duration: 0.05), value: timerManager.progress)
-                
-                VStack {
-                    Text(timerManager.timeString)
-                        .font(.system(size: 36, weight: .bold, design: .default))
-                        .monospacedDigit()
+                ZStack {
+                    Circle()
+                        .stroke(.gray.opacity(0.3), lineWidth: 16)
+                        .frame(maxWidth: .infinity, maxHeight: 320)
+                        .aspectRatio(1, contentMode: .fit)
                     
-                    if timerManager.timeRemaining > 0 {
-                        Text("Rest")
-                            .font(.title)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("Done!")
-                            .font(.title)
-                            .foregroundColor(.green)
-                            .fontWeight(.bold)
+                    Circle()
+                        .trim(from: 0, to: timerManager.progress)
+                        .stroke(.blue, style: StrokeStyle(lineWidth: 28, lineCap: .round))
+                                        .frame(maxWidth: .infinity, maxHeight: 320)
+                        .aspectRatio(1, contentMode: .fit)
+                        .rotationEffect(.degrees(-90))
+                        .animation(.linear(duration: 0.05), value: timerManager.progress)
+                    
+                    VStack {
+                        Text(timerManager.timeString)
+                            .font(.system(size: 36, weight: .bold, design: .default))
+                            .monospacedDigit()
+                        
+                        if timerManager.timeRemaining > 0 {
+                            Text("Rest")
+                                .font(.title)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("Done!")
+                                .font(.title)
+                                .foregroundColor(.green)
+                                .fontWeight(.bold)
+                        }
                     }
                 }
-            }
+            
             
             // Temporary fast forward button (for testing only)
             if showFastForward && timerManager.hasStarted && timerManager.timeRemaining > 5 {
@@ -63,7 +64,7 @@ struct SimpleCountdownTimer: View {
                 }) {
                     HStack(spacing: 8) {
                         Image(systemName: "forward.fill")
-                        Text("⏩ Skip to 5s")
+                        Text("⏩ Skip Rest")
                     }
                     .font(.caption)
                     .foregroundColor(.orange)
@@ -108,11 +109,11 @@ class CountdownTimerManager: ObservableObject {
         hasStarted = true
         updateProgress()
         
-        timer = Timer.publish(every: 0.1, on: .main, in: .common)
+        timer = Timer.publish(every: 0.01, on: .main, in: .common)
             .autoconnect()
             .sink { _ in
                 if self.exactTimeRemaining > 0 {
-                    self.exactTimeRemaining -= 0.1
+                    self.exactTimeRemaining -= 0.01
                     let newTimeRemaining = Int(ceil(self.exactTimeRemaining))
                     
                     if newTimeRemaining != self.timeRemaining {

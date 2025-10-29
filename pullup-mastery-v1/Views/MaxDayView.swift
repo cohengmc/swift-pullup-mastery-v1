@@ -26,7 +26,7 @@ struct MaxDayView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Set progress at top
-            MaxDaySetProgress(
+            SetProgressView(
                 currentSet: currentSet,
                 totalSets: totalSets,
                 completedSets: completedSets,
@@ -45,14 +45,21 @@ struct MaxDayView: View {
                         // Large central timer
                         SimpleCountdownTimer(initialTime: restTime, showFastForward: true) {
                             // Timer finished - save current set and move to next set
-                            saveCurrentSet()
-                            
-                            withAnimation {
-                                isResting = false
-                                showNumberWheel = false
-                                showSetCompleteButton = true
-                                currentSet += 1
-                                liveSelectedReps = 0
+                            // Only save if user has selected reps (no auto-defaults)
+                            if liveSelectedReps > 0 {
+                                saveCurrentSet()
+                                
+                                withAnimation {
+                                    isResting = false
+                                    showNumberWheel = false
+                                    showSetCompleteButton = true
+                                    currentSet += 1
+                                    liveSelectedReps = 0
+                                }
+                            } else {
+                                // User hasn't selected reps - give feedback and keep timer at 1 second
+                                HapticManager.shared.error()
+                                // Note: This should rarely happen as user should select reps during rest
                             }
                         }
                         .padding(.horizontal, 50)
@@ -91,39 +98,63 @@ struct MaxDayView: View {
                         .padding(.horizontal, 24)
                     }
                 } else {
-                    // Active set phase
-                    VStack(spacing: 40) {
-                        VStack(spacing: 8) {
-                            Text("Max Reps")
-                                .font(.system(size: 72, weight: .thin))
-                                .foregroundColor(.blue)
-                            
-                            if showSetCompleteButton {
-                                Button(action: completeCurrentSet) {
-                                    Text("Set Complete")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 32)
-                                        .padding(.vertical, 12)
-                                        .background(.blue)
-                                        .clipShape(Capsule())
+                    // Active set phase - vertically centered
+                    VStack {
+                        Spacer()
+                        
+                        VStack(spacing: 40) {
+                            VStack(spacing: 16) {
+                                Text("Max Reps")
+                                    .font(.system(size: 72, weight: .thin))
+                                    .foregroundColor(.blue)
+                                
+                                if showSetCompleteButton {
+                                    Button(action: completeCurrentSet) {
+                                        Text("Set Complete")
+                                            .font(.title2)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 32)
+                                            .padding(.vertical, 12)
+                                            .background(.blue)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                                
+                                if currentSet < totalSets && !isResting {
+                                    Text("Next: 5 Minute Rest")
+                                        .font(.title3)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                        .padding(.top, 8)
                                 }
                             }
                             
-                            if currentSet < totalSets && !isResting {
-                                Text("Next: 5 Minute Rest")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .padding(.top, 8)
+                            // Number wheel only shown after "Set Complete" is clicked
+                            if showNumberWheel && !showSetCompleteButton {
+                                VStack(spacing: 20) {
+                                    NumberWheel(selectedValue: $liveSelectedReps, minValue: 0, maxValue: maxRepsForCurrentSet())
+                                        .transition(.opacity.combined(with: .scale))
+                                    
+                                    // For final set, show completion button when reps are selected
+                                    if currentSet == totalSets && liveSelectedReps > 0 {
+                                        Button(action: completeFinalSet) {
+                                            Text("Complete Workout")
+                                                .font(.title2)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 32)
+                                                .padding(.vertical, 12)
+                                                .background(.green)
+                                                .clipShape(Capsule())
+                                        }
+                                        .transition(.opacity.combined(with: .scale))
+                                    }
+                                }
                             }
                         }
                         
-                        // Number wheel only shown after "Set Complete" is clicked
-                        if showNumberWheel && !showSetCompleteButton {
-                            NumberWheel(selectedValue: $liveSelectedReps, minValue: 0, maxValue: maxRepsForCurrentSet())
-                                .transition(.opacity.combined(with: .scale))
-                        }
+                        Spacer()
                     }
                 }
             } else {
@@ -140,6 +171,7 @@ struct MaxDayView: View {
         .animation(.easeInOut(duration: 0.5), value: isResting)
         .animation(.easeInOut(duration: 0.3), value: showNumberWheel)
         .animation(.easeInOut(duration: 0.3), value: showSetCompleteButton)
+        .animation(.easeInOut(duration: 0.3), value: currentSet)
     }
     
     private func completeCurrentSet() {
@@ -172,102 +204,27 @@ struct MaxDayView: View {
         completedSets.append(newSet)
     }
     
+    private func completeFinalSet() {
+        // Save the final set and complete the workout
+        saveCurrentSet()
+        
+        HapticManager.shared.success()
+        
+        withAnimation {
+            currentSet += 1 // This will trigger the WorkoutCompleteCard
+            showNumberWheel = false
+        }
+    }
+    
     private func maxRepsForCurrentSet() -> Int {
         if currentSet == 1 {
-            return 20 // First set can go up to 20 reps
+            return 50 // First set can go up to 50 reps
         } else {
             // For subsequent sets, limit to previous set's completed reps
             if let previousSet = completedSets.first(where: { $0.setNumber == currentSet - 1 }) {
                 return max(previousSet.reps, 1) // Ensure at least 1 rep is possible
             }
-            return 20 // Fallback to 20 if previous set not found
-        }
-    }
-}
-
-struct MaxDaySetProgress: View {
-    let currentSet: Int
-    let totalSets: Int
-    let completedSets: [WorkoutSet]
-    let currentReps: Int?
-    let liveReps: Int? // New parameter for real-time rep updates from number wheel
-    
-    var body: some View {
-        HStack(spacing: 20) {
-            ForEach(1...totalSets, id: \.self) { setNumber in
-                VStack(spacing: 4) {
-                    Text("Set \(setNumber)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(backgroundColorForSet(setNumber))
-                            .frame(width: 60, height: 60)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(borderColorForSet(setNumber), lineWidth: 2)
-                            )
-                        
-                        Text(textForSet(setNumber))
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(textColorForSet(setNumber))
-                    }
-                }
-            }
-        }
-    }
-    
-    private func backgroundColorForSet(_ setNumber: Int) -> Color {
-        if setNumber < currentSet {
-            return .blue.opacity(0.2)
-        } else if setNumber == currentSet {
-            return .blue.opacity(0.2)
-        } else {
-            return .red.opacity(0.2)
-        }
-    }
-    
-    private func borderColorForSet(_ setNumber: Int) -> Color {
-        if setNumber < currentSet {
-            return .blue
-        } else if setNumber == currentSet {
-            return .blue
-        } else {
-            return .red
-        }
-    }
-    
-    private func textColorForSet(_ setNumber: Int) -> Color {
-        if setNumber < currentSet {
-            return .blue
-        } else if setNumber == currentSet {
-            return .blue
-        } else {
-            return .red
-        }
-    }
-    
-    private func textForSet(_ setNumber: Int) -> String {
-        if setNumber < currentSet {
-            // Completed set - show reps
-            if let completedSet = completedSets.first(where: { $0.setNumber == setNumber }) {
-                return String(format: "%02d", completedSet.reps)
-            }
-            return "00"
-        } else if setNumber == currentSet {
-            // Current set - prioritize live reps from number wheel
-            if let liveReps = liveReps, liveReps > 0 {
-                return String(format: "%02d", liveReps)
-            } else if let reps = currentReps, reps > 0 {
-                return String(format: "%02d", reps)
-            } else {
-                return "↓"
-            }
-        } else {
-            // Future set
-            return "-"
+            return 50 // Fallback to 50 if previous set not found
         }
     }
 }

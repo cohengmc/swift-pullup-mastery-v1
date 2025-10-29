@@ -12,7 +12,8 @@ import SwiftData
 struct pullup_mastery_v1App: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Workout.self,
+            WorkoutSet.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

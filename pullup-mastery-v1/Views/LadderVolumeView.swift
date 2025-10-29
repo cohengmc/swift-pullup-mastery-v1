@@ -18,18 +18,36 @@ struct LadderVolumeView: View {
     @State private var isResting = false
     @State private var currentLadderReps: [Int] = [] // Track individual reps in current ladder
     @State private var manuallyCompleted = false // Track if user manually completed rest
+    @State private var isCurrentSetConfirmed = false // Track if current set is locked in
+    @State private var displayLadder = 1 // What ladder to show in progress view
     
     private let totalLadders = 5
     private let restTime = 30 // 30 seconds
     
+    // NEW: Computed property for current ladder's completed rep count
+    private var currentLadderCompletedReps: Int {
+        currentLadderReps.count
+    }
+    
+    private var nextRepText: String {
+        if isCurrentSetConfirmed {
+            if currentLadder >= totalLadders {
+                return "Next: Done!"
+            } else {
+                return "Next: 1 Rep"
+            }
+        } else {
+            return "Next: \(currentRepInLadder) Rep\(currentRepInLadder == 1 ? "" : "s")"
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
-            // Set progress at top with improved spacing
+            // UPDATED: Pass completed reps count instead of next rep number
             SetProgressView(
-                currentLadder: currentLadder,
-                totalLadders: totalLadders,
-                completedLadders: completedLadders,
-                currentRepInLadder: currentRepInLadder
+                totalSets: totalLadders,
+                completedSets: completedLadders,
+                currentReps: isCurrentSetConfirmed ? nil : currentLadderCompletedReps
             )
             .padding(.top, 24)
             .padding(.horizontal, 20)
@@ -41,35 +59,71 @@ struct LadderVolumeView: View {
                     // Rest phase between individual reps
                     VStack(spacing: 40) {
                         VStack(spacing: 12) {
-                            Text("Rest")
-                                .font(.system(size: 72, weight: .thin))
-                                .foregroundColor(.blue)
-                            
-                            Text("Next: \(currentRepInLadder + 1) Rep\(currentRepInLadder + 1 == 1 ? "" : "s")")
-                                .font(.title2)
+                                
+                    
+                            Text(nextRepText)
+                                .font(.system(size: 64, weight: .thin))
                                 .fontWeight(.medium)
                                 .foregroundColor(.secondary)
                         }
                         
-                        // 30-second timer with improved UI
-                        SimpleCountdownTimer(initialTime: restTime, showFastForward: true) {
-                            // Timer completed - advance automatically if not manually completed
-                            if !manuallyCompleted {
-                                withAnimation {
-                                    currentRepInLadder += 1
-                                    isResting = false
+                        // 30-second timer with improved UI - centered horizontally
+                        HStack {
+                            Spacer()
+                            SimpleCountdownTimer(initialTime: restTime, showFastForward: true) {
+                                // Timer completed - handle based on set confirmation state
+                                if !manuallyCompleted {
+                                    if isCurrentSetConfirmed {
+                                        // Set is locked in, advance to next ladder
+                                        completeLadder()
+                                    } else {
+                                        // Set not confirmed, just end rest
+                                        withAnimation {
+                                            isResting = false
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: 320)
+                            Spacer()
+                        }
+                        
+                        // Set Complete / Undo Set Complete buttons - only if user has made progress
+                        if currentLadderReps.count > 0 {
+                            if isCurrentSetConfirmed {
+                                Button(action: undoSetComplete) {
+                                    Text("Undo Set Complete")
+                                        .font(.title3)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 10)
+                                        .background(.orange)
+                                        .clipShape(Capsule())
+                                }
+                            } else {
+                                Button(action: completeSet) {
+                                    Text("Set Complete")
+                                        .font(.title3)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 28)
+                                        .padding(.vertical, 10)
+                                        .background(.green)
+                                        .clipShape(Capsule())
                                 }
                             }
                         }
                         
-                        Button(action: completeLadder) {
-                            Text("Set Complete")
-                                .font(.system(size: 18))
+                        // Skip Rest button
+                        Button(action: completeRest) {
+                            Text("Skip Rest")
+                                .font(.title2)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 28)
+                                .padding(.horizontal, 32)
                                 .padding(.vertical, 12)
-                                .background(.green)
+                                .background(.blue)
                                 .clipShape(Capsule())
                         }
                     }
@@ -141,93 +195,82 @@ struct LadderVolumeView: View {
         // Move to rest phase, then next rep
         withAnimation {
             isResting = true
+            currentRepInLadder += 1
         }
         
-        // Check if ladder is complete (when user can't complete next rep target)
-        // For now, let's assume they complete up to 10 reps max per ladder
-        if currentRepInLadder > 10 {
-            completeLadder()
-        }
+        // Note: Ladder completion is now handled by the "Set Complete" button during rest
     }
     
     private func completeRest() {
-        // User manually completed rest period
+        // User manually completed rest period or timer finished
         HapticManager.shared.success()
         manuallyCompleted = true
         
+        // If current set is confirmed, advance to next ladder
+        if isCurrentSetConfirmed {
+            completeLadder()
+        } else {
+            withAnimation {
+                isResting = false
+            }
+        }
+    }
+    
+    private func completeSet() {
+        // User locks in the current ladder's results
+        HapticManager.shared.success()
+        
+        // Save the max reps for this ladder
+        let maxReps = currentLadderReps.count
+        completedLadders.append(maxReps)
+        
+        // Mark set as confirmed and advance display ladder
         withAnimation {
-            currentRepInLadder += 1
-            isResting = false
+            isCurrentSetConfirmed = true
+            displayLadder = min(currentLadder + 1, totalLadders + 1)
+        }
+    }
+    
+    private func undoSetComplete() {
+        // User reverts the set confirmation
+        HapticManager.shared.error()
+        
+        // Remove the last saved set
+        if !completedLadders.isEmpty {
+            completedLadders.removeLast()
+        }
+        
+        // Revert confirmation state and display ladder
+        withAnimation {
+            isCurrentSetConfirmed = false
+            displayLadder = currentLadder
         }
     }
     
     private func completeLadder() {
-        // User is finishing the current ladder
+        // Advance to next ladder after confirming set
         HapticManager.shared.success()
-        
-        // Calculate max reps for this ladder based on completed rep levels
-        let maxReps = max(1, currentLadderReps.count)
-        completedLadders.append(maxReps)
         
         if currentLadder < totalLadders {
             // Move to next ladder
             withAnimation {
                 currentLadder += 1
+                displayLadder = currentLadder
                 currentRepInLadder = 1
                 currentLadderReps = []
                 isResting = false
                 manuallyCompleted = false
+                isCurrentSetConfirmed = false
             }
         } else {
             // All ladders complete
             withAnimation {
                 currentLadder += 1
+                displayLadder = currentLadder
+                isCurrentSetConfirmed = false
                 manuallyCompleted = false
             }
         }
-    }
-}
-
-struct LadderInfoCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "arrow.up.right")
-                    .foregroundColor(.green)
-                
-                Text("Ladder Volume")
-                    .font(.title2)
-                    .fontWeight(.bold)
-            }
-            
-            Text("5 ascending ladders with 30 second rest")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            Divider()
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("How it works:")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .textCase(.uppercase)
-                    .foregroundColor(.secondary)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("• Start with 1 rep, rest 30s, then 2 reps, rest 30s, etc.")
-                        .font(.caption)
-                    Text("• Continue until you can't complete a set")
-                        .font(.caption)
-                    Text("• Start next ladder with 1 rep")
-                        .font(.caption)
-                    Text("• Complete 5 total ladders")
-                        .font(.caption)
-                }
-                .foregroundColor(.secondary)
-            }
-        }
-        .padding()
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 }
 

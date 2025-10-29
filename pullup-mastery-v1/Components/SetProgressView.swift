@@ -8,186 +8,247 @@
 import SwiftUI
 
 struct SetProgressView: View {
-    let currentSet: Int
     let totalSets: Int
-    let completedSets: [WorkoutSet]
-    let currentReps: Int?
-    let liveReps: Int? // Real-time rep updates from number wheel
+    let completedSets: [Int] // Array of rep counts for completed sets
+    let currentReps: Int? // Reps for current set, nil if not started
     
-    // Ladder workout parameters (optional)
-    let completedLadders: [Int]? // Array of max reps reached in each completed ladder
-    let currentRepInLadder: Int?
-    
-    // Regular workout initializer
-    init(currentSet: Int, totalSets: Int, completedSets: [WorkoutSet], currentReps: Int? = nil, liveReps: Int? = nil) {
-        self.currentSet = currentSet
-        self.totalSets = totalSets
-        self.completedSets = completedSets
-        self.currentReps = currentReps
-        self.liveReps = liveReps
-        self.completedLadders = nil
-        self.currentRepInLadder = nil
+    private var currentSet: Int {
+        completedSets.count + 1
     }
     
-    // Ladder workout initializer
-    init(currentLadder: Int, totalLadders: Int, completedLadders: [Int], currentRepInLadder: Int) {
-        self.currentSet = currentLadder
-        self.totalSets = totalLadders
-        self.completedSets = []
-        self.currentReps = nil
-        self.liveReps = nil
-        self.completedLadders = completedLadders
-        self.currentRepInLadder = currentRepInLadder
-    }
-    
-    private var isLadderMode: Bool {
-        completedLadders != nil
-    }
+    // Threshold for when to use scrolling vs static layout
+    private let scrollThreshold = 5
     
     var body: some View {
+        if totalSets <= scrollThreshold {
+            // Static layout for 5 or fewer sets
+            staticProgressView
+        } else {
+            // Scrolling layout for more than 5 sets
+            scrollingProgressView
+        }
+    }
+    
+    // MARK: - Static Progress View (Original)
+    private var staticProgressView: some View {
         VStack(spacing: 16) {
-            // Set label - different for ladder mode
-            if isLadderMode {
-                HStack {
-                    Text("Ladder \(currentSet)")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    Spacer()
+            // Progress indicators
+            HStack(spacing: 20) {
+                ForEach(1...totalSets, id: \.self) { setNumber in
+                    SetBoxView(
+                        setNumber: setNumber,
+                        totalSets: totalSets,
+                        completedSets: completedSets,
+                        currentReps: currentReps,
+                        currentSet: currentSet
+                    )
                 }
             }
-            
-            // Progress indicators
-            HStack(spacing: isLadderMode ? 12 : 20) {
-                ForEach(1...totalSets, id: \.self) { setNumber in
-                    VStack(spacing: 4) {
-                        if !isLadderMode {
-                            Text("Set \(setNumber)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+        }
+    }
+    
+    // MARK: - Scrolling Progress View (For 10+ sets)
+    private var scrollingProgressView: some View {
+        GeometryReader { geometry in
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 20) {
+                        // Invisible anchor at start
+                        Color.clear
+                            .frame(width: 1)
+                            .id("start")
+                        
+                        ForEach(1...totalSets, id: \.self) { setNumber in
+                            SetBoxView(
+                                setNumber: setNumber,
+                                totalSets: totalSets,
+                                completedSets: completedSets,
+                                currentReps: currentReps,
+                                currentSet: currentSet
+                            )
+                            .id(setNumber)
                         }
                         
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(backgroundColorForSet(setNumber))
-                                .frame(width: 60, height: 60)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(borderColorForSet(setNumber), lineWidth: 2)
-                                )
-                            
-                            Text(textForSet(setNumber))
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(textColorForSet(setNumber))
-                        }
+                        // Invisible anchor at end
+                        Color.clear
+                            .frame(width: 1)
+                            .id("end")
                     }
+                    .padding(.horizontal, 20)
+                }
+                .scrollDisabled(true)
+                .onChange(of: currentSet) { oldValue, newValue in
+                    scrollToPercentage(proxy: proxy, geometry: geometry)
+                }
+                .onAppear {
+                    scrollToPercentage(proxy: proxy, geometry: geometry)
                 }
             }
         }
     }
     
-    private func backgroundColorForSet(_ setNumber: Int) -> Color {
-        if setNumber < currentSet {
-            // Completed set - green background
-            return .green.opacity(0.2)
-        } else if setNumber == currentSet {
-            // Current set - blue background
-            return .blue.opacity(0.2)
-        } else {
-            // Future set - red background
-            return .red.opacity(0.2)
+    // MARK: - Scrolling Logic
+    private var scrollPercentage: Double {
+        let linearProgress = Double(currentSet - 1) / Double(totalSets - 1)
+        return customWorkoutEasing(linearProgress)
+    }
+    
+    // Custom easing: slow start, fast middle, slow end
+    private func customWorkoutEasing(_ x: Double) -> Double {
+        // Very slow start (sets 1-3) - only scroll 15%
+        if x < 0.3 {
+            return x * 0.5
+        }
+        // Fast middle (sets 4-7) - scroll 55% during this phase
+        else if x < 0.7 {
+            return 0.15 + (x - 0.3) * 1.375
+        }
+        // Slow finish (sets 8-10) - final 30% scroll
+        else {
+            return 0.70 + (x - 0.7) * 1.0
         }
     }
     
-    private func borderColorForSet(_ setNumber: Int) -> Color {
-        if setNumber < currentSet {
-            // Completed set - green border
-            return .green
-        } else if setNumber == currentSet {
-            // Current set - blue border
-            return .blue
-        } else {
-            // Future set - red border
-            return .red
-        }
-    }
-    
-    private func textColorForSet(_ setNumber: Int) -> Color {
-        if setNumber < currentSet {
-            // Completed set - green text
-            return .green
-        } else if setNumber == currentSet {
-            // Current set - blue text
-            return .blue
-        } else {
-            // Future set - red text
-            return .red
-        }
-    }
-    
-    private func textForSet(_ setNumber: Int) -> String {
-        if isLadderMode {
-            // Ladder mode logic
-            if setNumber < currentSet {
-                // Completed ladder - show max reps achieved
-                if let completedLadders = completedLadders,
-                   completedLadders.indices.contains(setNumber - 1) {
-                    return String(format: "%02d", completedLadders[setNumber - 1])
-                }
-                return "00"
-            } else if setNumber == currentSet {
-                // Current ladder - show current rep being attempted or arrow if just starting
-                if let currentRepInLadder = currentRepInLadder, currentRepInLadder > 1 {
-                    return String(format: "%02d", currentRepInLadder)
-                } else {
-                    return "↓"
-                }
+    private func scrollToPercentage(proxy: ScrollViewProxy, geometry: GeometryProxy) {
+        let setWidth: CGFloat = 60
+        let setSpacing: CGFloat = 20
+        
+        // Calculate total content width
+        let totalBoxesWidth = CGFloat(totalSets) * setWidth
+        let totalSpacingWidth = CGFloat(totalSets - 1) * setSpacing
+        let totalContentWidth = totalBoxesWidth + totalSpacingWidth + 40 // 40 for padding
+        
+        // Calculate scrollable distance
+        let scrollableDistance = max(0, totalContentWidth - geometry.size.width)
+        
+        // Calculate target offset based on percentage
+        let targetOffset = scrollableDistance * scrollPercentage
+        
+        // Find which set ID to scroll to that approximates this offset
+        let offsetPerSet = (setWidth + setSpacing)
+        let targetSetFloat = targetOffset / offsetPerSet + 1
+        let targetSet = min(max(1, Int(round(targetSetFloat))), totalSets)
+        
+        withAnimation(.easeInOut(duration: 0.5)) {
+            if scrollPercentage == 0 {
+                proxy.scrollTo("start", anchor: .leading)
+            } else if scrollPercentage >= 0.99 {
+                proxy.scrollTo("end", anchor: .trailing)
             } else {
-                // Future ladder
-                return "-"
-            }
-        } else {
-            // Regular workout mode logic
-            if setNumber < currentSet {
-                // Completed set - show checkmark
-                return "✓"
-            } else if setNumber == currentSet {
-                // Current set - prioritize live reps from number wheel
-                if let liveReps = liveReps, liveReps > 0 {
-                    return String(format: "%02d", liveReps)
-                } else if let reps = currentReps, reps > 0 {
-                    return String(format: "%02d", reps)
-                } else {
-                    return "↓"
-                }
-            } else {
-                // Future set
-                return "-"
+                proxy.scrollTo(targetSet, anchor: .leading)
             }
         }
     }
 }
 
-
-
+// MARK: - Set Box Component (Extracted for reuse)
+struct SetBoxView: View {
+    let setNumber: Int
+    let totalSets: Int
+    let completedSets: [Int]
+    let currentReps: Int?
+    let currentSet: Int
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            Text("Set \(setNumber)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(backgroundColorForSet)
+                    .frame(width: 60, height: 60)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(borderColorForSet, lineWidth: 2)
+                    )
+                
+                Text(textForSet)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(textColorForSet)
+            }
+        }
+    }
+    
+    private var backgroundColorForSet: Color {
+        if setNumber < currentSet {
+            return .green.opacity(0.2)
+        } else if setNumber == currentSet {
+            return .blue.opacity(0.2)
+        } else {
+            return .red.opacity(0.2)
+        }
+    }
+    
+    private var borderColorForSet: Color {
+        if setNumber < currentSet {
+            return .green
+        } else if setNumber == currentSet {
+            return .blue
+        } else {
+            return .red
+        }
+    }
+    
+    private var textColorForSet: Color {
+        if setNumber < currentSet {
+            return .green
+        } else if setNumber == currentSet {
+            return .blue
+        } else {
+            return .red
+        }
+    }
+    
+    private var textForSet: String {
+        if setNumber < currentSet {
+            // Completed set - show the rep count
+            let reps = completedSets[setNumber - 1]
+            return String(format: "%02d", reps)
+        } else if setNumber == currentSet {
+            // Current set - show current reps or arrow if not started
+            if let reps = currentReps, reps > 0 {
+                return String(format: "%02d", reps)
+            } else {
+                return "↓"
+            }
+        } else {
+            // Future set
+            return "-"
+        }
+    }
+}
 
 #Preview {
     VStack(spacing: 20) {
+        // Example 1: On set 2, with 8 reps completed in set 1, currently at 6 reps
         SetProgressView(
-            currentSet: 2,
             totalSets: 3,
-            completedSets: [
-                WorkoutSet(setNumber: 1, reps: 8)
-            ],
-            currentReps: 6,
-            liveReps: nil
+            completedSets: [8],
+            currentReps: 6
         )
         
+        // Example 2: On set 3, with sets 1 and 2 completed, current set just started
         SetProgressView(
-            currentLadder: 3,
-            totalLadders: 5,
-            completedLadders: [6, 5],
-            currentRepInLadder: 4
+            totalSets: 5,
+            completedSets: [10, 8],
+            currentReps: nil
+        )
+        
+        // Example 3: First set, no reps yet
+        SetProgressView(
+            totalSets: 3,
+            completedSets: [],
+            currentReps: nil
+        )
+        
+        // Example 4: SubMax workout with 10 sets - should scroll
+        SetProgressView(
+            totalSets: 10,
+            completedSets: [8, 7, 6],
+            currentReps: 5
         )
     }
     .padding()

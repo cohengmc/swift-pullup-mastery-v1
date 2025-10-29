@@ -27,11 +27,9 @@ struct MaxDayView: View {
         VStack(spacing: 0) {
             // Set progress at top
             SetProgressView(
-                currentSet: currentSet,
                 totalSets: totalSets,
-                completedSets: completedSets,
-                currentReps: isResting ? nil : currentReps,
-                liveReps: showNumberWheel ? liveSelectedReps : nil
+                completedSets: completedSets.map { $0.reps },
+                currentReps: isResting ? (showNumberWheel ? liveSelectedReps : nil) : currentReps
             )
             .padding(.top, 20)
             .padding(.horizontal)
@@ -218,13 +216,13 @@ struct MaxDayView: View {
     
     private func maxRepsForCurrentSet() -> Int {
         if currentSet == 1 {
-            return 50 // First set can go up to 50 reps
+            return 20 // First set can go up to 20 reps
         } else {
             // For subsequent sets, limit to previous set's completed reps
             if let previousSet = completedSets.first(where: { $0.setNumber == currentSet - 1 }) {
                 return max(previousSet.reps, 1) // Ensure at least 1 rep is possible
             }
-            return 50 // Fallback to 50 if previous set not found
+            return 20 // Fallback to 20 if previous set not found
         }
     }
 }

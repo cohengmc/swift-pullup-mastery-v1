@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 
 struct LargeSecondaryTextStyle: ViewModifier {
     func body(content: Content) -> some View {
@@ -37,12 +38,42 @@ struct LargePrimaryButtonTextStyle: ViewModifier {
     }
 }
 
-
-
-
-
-
+extension Date {
     
+    /// Formats the date as "MMM d'st/nd/th', yyyy"
+    /// (e.g., "Oct 30th, 2025")
+    func formattedWithOrdinalDay() -> String {
+        
+        // 1. Get the day component as an integer
+        let day = Calendar.current.component(.day, from: self)
+        
+        // 2. Get the month and year parts as strings
+        let formatter = DateFormatter()
+        
+        formatter.dateFormat = "MMM"
+        let month = formatter.string(from: self)
+        
+        formatter.dateFormat = "yyyy"
+        let year = formatter.string(from: self)
+        
+        // 3. Determine the correct suffix
+        let suffix: String
+        switch day {
+        case 11, 12, 13:
+            suffix = "th"
+        default:
+            switch (day % 10) { // Get the last digit
+            case 1:  suffix = "st"
+            case 2:  suffix = "nd"
+            case 3:  suffix = "rd"
+            default: suffix = "th"
+            }
+        }
+        
+        // 4. Combine all the parts
+        return "\(month) \(day)\(suffix), \(year)"
+    }
+}
 
 extension View {
     func largeSecondaryTextStyle() -> some View {

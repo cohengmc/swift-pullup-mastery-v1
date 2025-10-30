@@ -32,7 +32,7 @@ struct SubMaxVolumeView: View {
                 currentReps: isResting ? (showNumberWheel ? liveSelectedReps : nil) : currentReps
             )
             .padding(.top, 20)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 0)
             .frame(height: 100)
             
             Spacer()
@@ -64,7 +64,7 @@ struct SubMaxVolumeView: View {
                         .padding(.horizontal, 50)
                         
                         // Bottom section: number wheel (left) + rest text (right)
-                        HStack(alignment: .center, spacing: 40) {
+                        HStack(alignment: .center, spacing: 24) {
                             // Left side: Number wheel (compact)
                             if showNumberWheel {
                                 NumberWheel(selectedValue: $liveSelectedReps, minValue: 0, maxValue: maxRepsForCurrentSet())
@@ -73,45 +73,68 @@ struct SubMaxVolumeView: View {
                             }
                             
                             // Right side: Rest text (prominent)
-                            VStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 0) {
                                 Text("Next:")
-                                    .font(.system(size: 32, weight: .ultraLight))
+                                    .font(.system(size: 40, weight: .ultraLight))
                                     .fontWeight(.medium)
                                     .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.trailing)
                                 
-                                Text("Max Reps")
-                                    .largeSecondaryTextStyle()
+                                if(liveSelectedReps == 0){
+                                    Text("Submax")
+                                        .font(.system(size: 52, weight: .ultraLight))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.white)
+                                } else {
+                                    
+                                    Text("\(liveSelectedReps) Reps")
+                                        .font(.system(size: 52, weight: .ultraLight))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.white)
+                                }
+                                
+                                Text("or form breakdown")
+                                    .font(.system(size: 40, weight: .ultraLight))
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, 20)
                     }
                 } else {
                     // Active set phase - vertically centered
                     VStack {
                         Spacer()
                         
-                        VStack(spacing: 40) {
-                            VStack(spacing: 16) {
-                                Text("50%")
-                                    .largePrimaryTextStyle()
-                                Text("Max Reps")
-                                    .largePrimaryTextStyle()
+                        VStack() {
+                            VStack(alignment: .center) {
                                 
+                                if(currentSet == 1){
+                                    Text("Sub-Max")
+                                        .largePrimaryTextStyle()
+                                        .multilineTextAlignment(.center)
+                                    Text("50% of max reps")
+                                        .font(.system(size: 40, weight: .ultraLight))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                } else {
+                                    
+                                    Text("\(maxRepsForCurrentSet()) Reps")
+                                        .largePrimaryTextStyle()
+                                        .multilineTextAlignment(.center)
+                                    Text("or form breakdown")
+                                        .font(.system(size: 40, weight: .ultraLight))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+
                                 if showSetCompleteButton {
                                     Button(action: completeCurrentSet) {
                                         Text("Set Complete")
                                             .largePrimaryButtonTextStyle()
                                     }
-                                }
-                                
-                                if currentSet < totalSets && !isResting {
-                                    Text("Next: 1 Minute Rest")
-                                        .font(.title3)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                        .padding(.top, 8)
                                 }
                             }
                             
@@ -162,12 +185,21 @@ struct SubMaxVolumeView: View {
         .animation(.easeInOut(duration: 0.3), value: currentSet)
     }
     
+    // --- UPDATED FUNCTION ---
     private func completeCurrentSet() {
+        // Determine the starting reps for the number wheel
+        let startingReps: Int
+        if currentSet == 1 {
+            startingReps = 0 // Requirement: Start at 0 for the first set
+        } else {
+            startingReps = maxRepsForCurrentSet() // Requirement: Start at max of previous set
+        }
+        
         // Hide "Set Complete" button and show number wheel immediately
         withAnimation {
             showSetCompleteButton = false
             showNumberWheel = true
-            liveSelectedReps = 0 // Reset to 0 for rep input
+            liveSelectedReps = startingReps // Set the calculated starting value
         }
         
         HapticManager.shared.success()
@@ -182,6 +214,7 @@ struct SubMaxVolumeView: View {
             // User can input reps and workout will complete when they're done
         }
     }
+    // --- END UPDATE ---
     
     private func saveCurrentSet() {
         guard let workout = workout else { return }

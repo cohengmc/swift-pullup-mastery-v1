@@ -15,7 +15,8 @@ struct RepBreakdownChart: View {
     let title: String
     let data: [Int]
     let totalReps: Int
-
+    let date: Date
+    
     // MARK: - Computed Properties (from React useMemo)
 
     /// Finds the maximum value in the data, defaulting to 1 to avoid division by zero
@@ -26,9 +27,13 @@ struct RepBreakdownChart: View {
     // MARK: - View Body
 
     var body: some View {
-        // Main container (VStack replaces flex-direction: column)
-        VStack(alignment: .leading, spacing: 16) {
+        let formattedString = date.formattedWithOrdinalDay()
 
+        // Main container (VStack replaces flex-direction: column)
+        VStack(alignment: .center, spacing: 16) {
+            
+            
+            
             // Title and Total Reps Row (HStack replaces flex-direction: row)
             HStack(alignment: .top) {
                 
@@ -76,7 +81,7 @@ struct RepBreakdownChart: View {
             
 
             // Bar Chart Section
-            HStack(alignment: .bottom, spacing: 4) {
+            HStack(alignment: .bottom, spacing: 8) {
                 // ForEach replaces data.map
                 ForEach(Array(data.enumerated()), id: \.offset) {
                     index, value in
@@ -103,6 +108,19 @@ struct RepBreakdownChart: View {
                 }
             }
             .frame(height: 120)  // Fixed height for the chart container
+            
+            // Context
+            HStack(){
+                Text("Pull Up Mastery")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.gray)
+                
+                Spacer()
+                
+                Text(formattedString)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.gray)
+            }
 
         }
         .padding(20)
@@ -132,9 +150,11 @@ struct RepBreakdownChart_Previews: PreviewProvider {
             Color.black.ignoresSafeArea()
 
             RepBreakdownChart(
-                title: "Sub-Max Day",
+                title: "Max Day",
                 data: [6, 6, 6, 6, 6, 5, 5, 5, 5, 5],
-                totalReps: 55
+                totalReps: 55,
+                date: Date()
+    
             )
             .padding()
             

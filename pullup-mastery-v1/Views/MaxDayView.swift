@@ -52,7 +52,7 @@ struct MaxDayView: View {
                                     showNumberWheel = false
                                     showSetCompleteButton = true
                                     currentSet += 1
-                                    liveSelectedReps = 0
+                                    liveSelectedReps = 0 // Reset for next interaction
                                 }
                             } else {
                                 // User hasn't selected reps - give feedback and keep timer at 1 second
@@ -63,7 +63,7 @@ struct MaxDayView: View {
                         .padding(.horizontal, 50)
                         
                         // Bottom section: number wheel (left) + rest text (right)
-                        HStack(alignment: .center, spacing: 40) {
+                        HStack(alignment: .center, spacing: 24) {
                             // Left side: Number wheel (compact)
                             if showNumberWheel {
                                 NumberWheel(selectedValue: $liveSelectedReps, minValue: 0, maxValue: maxRepsForCurrentSet())
@@ -72,24 +72,33 @@ struct MaxDayView: View {
                             }
                             
                             // Right side: Rest text (prominent)
-                            VStack(spacing: 12) {
-//                                Text("Rest")
-//                                    .font(.system(size: 64, weight: .ultraLight))
-//                                    .foregroundColor(.blue)
-                                
+                            VStack(alignment: .leading, spacing: 0) {
                                 Text("Next:")
-//                                    .font(.title)
-                                    .font(.system(size: 32, weight: .ultraLight))
+                                    .font(.system(size: 40, weight: .ultraLight))
                                     .fontWeight(.medium)
                                     .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.trailing)
                                 
-                                Text("Max Reps")
-                                    .largeSecondaryTextStyle()
+                                if(liveSelectedReps == 0){
+                                    Text("Max")
+                                        .font(.system(size: 52, weight: .ultraLight))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.white)
+                                } else {
+                                    
+                                    Text("\(liveSelectedReps) Reps")
+                                        .font(.system(size: 52, weight: .ultraLight))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.white)
+                                }
+                                
+                                Text("or form breakdown")
+                                    .font(.system(size: 40, weight: .ultraLight))
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, 20)
                     }
                 } else {
                     // Active set phase - vertically centered
@@ -97,23 +106,33 @@ struct MaxDayView: View {
                         Spacer()
                         
                         VStack(spacing: 40) {
-                            VStack(spacing: 16) {
-                                Text("Max Reps")
-                                    .largePrimaryTextStyle()
+                            VStack() {
+                                
+                                if(currentSet == 1){
+                                    Text("Max Reps")
+                                        .largePrimaryTextStyle()
+                                        .multilineTextAlignment(.center)
+                                    Text("until form breakdown")
+                                        .font(.system(size: 40, weight: .ultraLight))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                } else {
+                                    
+                                    Text("\(maxRepsForCurrentSet()) Reps")
+                                        .largePrimaryTextStyle()
+                                        .multilineTextAlignment(.center)
+                                    Text("or form breakdown")
+                                        .font(.system(size: 40, weight: .ultraLight))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.secondary)
+                                }
                                 
                                 if showSetCompleteButton {
                                     Button(action: completeCurrentSet) {
                                         Text("Set Complete")
                                             .largePrimaryButtonTextStyle()
                                     }
-                                }
-                                
-                                if currentSet < totalSets && !isResting {
-                                    Text("Next: 5 Minute Rest")
-                                        .font(.title3)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.secondary)
-                                        .padding(.top, 8)
                                 }
                             }
                             
@@ -146,11 +165,10 @@ struct MaxDayView: View {
                 }
             } else {
                 // Workout complete
-                WorkoutCompleteCard {
-                    if let workout = workout {
-                        onWorkoutComplete(workout)
-                    }
-                }
+                // The onWorkoutComplete closure was called by completeFinalSet().
+                // We just show an empty view while the parent view (e.g., a
+                // NavigationStack) handles dismissing this view.
+                EmptyView()
             }
             
             Spacer()
@@ -161,12 +179,21 @@ struct MaxDayView: View {
         .animation(.easeInOut(duration: 0.3), value: currentSet)
     }
     
+    // --- UPDATED FUNCTION ---
     private func completeCurrentSet() {
+        // Determine the starting reps for the number wheel
+        let startingReps: Int
+        if currentSet == 1 {
+            startingReps = 0
+        } else {
+            startingReps = maxRepsForCurrentSet() // Requirement: Start at max of previous set
+        }
+        
         // Hide "Set Complete" button and show number wheel immediately
         withAnimation {
             showSetCompleteButton = false
             showNumberWheel = true
-            liveSelectedReps = 0 // Reset to 0 for rep input
+            liveSelectedReps = startingReps // Set the calculated starting value
         }
         
         HapticManager.shared.success()
@@ -181,6 +208,7 @@ struct MaxDayView: View {
             // User can input reps and workout will complete when they're done
         }
     }
+    // --- END UPDATE ---
     
     private func saveCurrentSet() {
         guard let workout = workout else { return }
@@ -197,10 +225,17 @@ struct MaxDayView: View {
         HapticManager.shared.success()
         
         withAnimation {
-            currentSet += 1 // This will trigger the WorkoutCompleteCard
+            currentSet += 1 // This will trigger the body's else block
             showNumberWheel = false
         }
         
+        // --- MODIFICATION ---
+        // Call the completion handler. The caller (the Preview in this
+        // case) is responsible for printing and/or dismissing the view.
+        if let workout = workout {
+            onWorkoutComplete(workout)
+        }
+        // --- END MODIFICATION ---
     }
     
     private func maxRepsForCurrentSet() -> Int {
@@ -217,46 +252,16 @@ struct MaxDayView: View {
     }
 }
 
-struct WorkoutCompleteCard: View {
-    let onFinish: () -> Void
-    
-    var body: some View {
-        VStack(spacing: 30) {
-            VStack(spacing: 16) {
-                Image(systemName: "trophy.fill")
-                    .font(.system(size: 80))
-                    .foregroundColor(.yellow)
-                
-                Text("Workout Complete!")
-                    .font(.system(size: 48, weight: .thin))
-                    .foregroundColor(.green)
-                
-                Text("Excellent work! You've completed all 3 sets.")
-                    .font(.title3)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            
-            Button(action: onFinish) {
-                Text("Finish Workout")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 12)
-                    .background(.green)
-                    .clipShape(Capsule())
-            }
-        }
-        .padding(.vertical, 40)
-    }
-}
+// --- MODIFICATION ---
+// The WorkoutCompleteCard struct has been removed.
+// --- END MODIFICATION ---
 
 #Preview {
     let workout = Workout(type: .maxDay)
     
     return NavigationView {
         MaxDayView(workout: workout) { _ in
+            // This closure now handles the print statement, as requested.
             print("Workout complete!")
         }
     }

@@ -43,8 +43,8 @@ final class Workout {
 
 enum WorkoutType: String, CaseIterable, Codable {
     case maxDay = "Max Day"
-    case subMaxVolume = "Sub Max Volume"
-    case ladderVolume = "Ladder Volume"
+    case subMaxVolume = "Sub-Max"
+    case ladderVolume = "Ladder"
     
     var description: String {
         switch self {

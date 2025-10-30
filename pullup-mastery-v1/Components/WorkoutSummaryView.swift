@@ -32,7 +32,8 @@ struct WorkoutSummaryView: View {
                     RepBreakdownChart(
                         title: workout.type.rawValue,
                         data: workout.sets,
-                        totalReps: workout.totalReps
+                        totalReps: workout.totalReps,
+                        date: workout.date
                     )
                     
                     // Actions
@@ -57,13 +58,6 @@ struct WorkoutSummaryView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Summary")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done", action: onDismiss)
-                }
-            }
         }
     }
     
@@ -78,7 +72,7 @@ struct WorkoutSummaryView: View {
 private enum WorkoutSummaryPreviewData {
     static var sampleWorkout: Workout = {
         let w = Workout(type: .ladderVolume)
-        w.sets = [5, 5, 4,4,4]
+        w.sets = [6, 5, 4,4,4]
         return w
     }()
 }

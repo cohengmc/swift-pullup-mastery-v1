@@ -13,43 +13,31 @@ final class Workout {
     var id: UUID
     var date: Date
     var type: WorkoutType
-    var sets: [WorkoutSet]
-    var completed: Bool
-    var notes: String?
+    var sets: [Int]
     
     init(type: WorkoutType, date: Date = Date()) {
         self.id = UUID()
         self.date = date
         self.type = type
         self.sets = []
-        self.completed = false
-        self.notes = nil
     }
     
     var totalReps: Int {
-        sets.reduce(0) { $0 + $1.reps }
-    }
+            switch type {
+            case .ladderVolume:
+                // For ladders, each 'n' in sets represents the sum of 1...n.
+                // This is calculated using the formula: n * (n + 1) / 2
+                return sets.reduce(0) { total, n in
+                    total + (n * (n + 1)) / 2
+                }
+            default:
+                // For all other workout types, just sum the reps in the sets.
+                return sets.reduce(0, +)
+            }
+        }
     
     var completedSets: Int {
-        sets.filter { $0.reps > 0 }.count
-    }
-}
-
-@Model
-final class WorkoutSet {
-    var id: UUID
-    var setNumber: Int
-    var reps: Int
-    var restTime: Int // in seconds
-    var completed: Bool
-    var workout: Workout?
-    
-    init(setNumber: Int, reps: Int = 0, restTime: Int = 0) {
-        self.id = UUID()
-        self.setNumber = setNumber
-        self.reps = reps
-        self.restTime = restTime
-        self.completed = false
+        return sets.count
     }
 }
 

@@ -204,9 +204,8 @@ struct SetBoxView: View {
     
     private var textForSet: String {
         if setNumber < currentSet {
-            // Completed set - show the rep count
-            let reps = completedSets[setNumber - 1]
-            return String(format: "%02d", reps)
+            // Completed set
+            return "✓"
         } else if setNumber == currentSet {
             // Current set - show current reps or arrow if not started
             if let reps = currentReps, reps > 0 {

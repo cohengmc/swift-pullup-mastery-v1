@@ -62,9 +62,7 @@ struct LadderVolumeView: View {
                                 
                     
                             Text(nextRepText)
-                                .font(.system(size: 64, weight: .thin))
-                                .fontWeight(.medium)
-                                .foregroundColor(.secondary)
+                                .largeSecondaryTextStyle()
                         }
                         
                         // 30-second timer with improved UI - centered horizontally
@@ -132,8 +130,7 @@ struct LadderVolumeView: View {
                     VStack(spacing: 40) {
                         VStack(spacing: 12) {
                             Text("\(currentRepInLadder) Rep\(currentRepInLadder == 1 ? "" : "s")")
-                                .font(.system(size: 100, weight: .thin))
-                                .foregroundColor(.blue)
+                                .largePrimaryTextStyle()
             
                             
                             VStack(spacing: 20) {
@@ -141,13 +138,7 @@ struct LadderVolumeView: View {
                                 
                                 Button(action: completeCurrentRep) {
                                     Text("Rep Complete")
-                                        .font(.title)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 32)
-                                        .padding(.vertical, 12)
-                                        .background(.blue)
-                                        .clipShape(Capsule())
+                                        .largePrimaryButtonTextStyle()
                                 }
                                 
                                 
@@ -182,9 +173,7 @@ struct LadderVolumeView: View {
         
         // Save individual rep to workout
         if let workout = workout {
-            let repNumber = workout.sets.count + 1
-            let newSet = WorkoutSet(setNumber: repNumber, reps: 1, restTime: restTime)
-            workout.sets.append(newSet)
+            workout.sets.append(1)
         }
         
         HapticManager.shared.success()
@@ -495,5 +484,5 @@ struct LadderCompleteCard: View {
             print("Workout complete!")
         }
     }
-    .modelContainer(for: [Workout.self, WorkoutSet.self], inMemory: true)
+    .modelContainer(for: [Workout.self], inMemory: true)
 }

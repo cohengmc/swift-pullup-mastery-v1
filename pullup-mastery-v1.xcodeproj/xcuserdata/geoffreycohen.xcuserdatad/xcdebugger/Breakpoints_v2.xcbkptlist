@@ -14,10 +14,10 @@
             filePath = "pullup-mastery-v1/Views/MaxDayView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "232"
-            endingLineNumber = "232"
-            landmarkName = "WorkoutCompleteCard"
-            landmarkType = "14">
+            startingLineNumber = "222"
+            endingLineNumber = "222"
+            landmarkName = "body"
+            landmarkType = "24">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy

@@ -14,7 +14,7 @@ struct MaxDayView: View {
     
     @State private var currentSet = 1
     @State private var currentReps = 0
-    @State private var completedSets: [WorkoutSet] = []
+    @State private var completedSets: [Int] = []
     @State private var isResting = false
     @State private var showNumberWheel = false
     @State private var liveSelectedReps = 0 // Real-time number wheel selection
@@ -28,7 +28,7 @@ struct MaxDayView: View {
             // Set progress at top
             SetProgressView(
                 totalSets: totalSets,
-                completedSets: completedSets.map { $0.reps },
+                completedSets: completedSets,
                 currentReps: isResting ? (showNumberWheel ? liveSelectedReps : nil) : currentReps
             )
             .padding(.top, 20)
@@ -85,11 +85,7 @@ struct MaxDayView: View {
                                     .multilineTextAlignment(.trailing)
                                 
                                 Text("Max Reps")
-//                                    .font(.title)
-                                    .font(.system(size: 32, weight: .ultraLight))
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.trailing)
+                                    .largeSecondaryTextStyle()
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -103,19 +99,12 @@ struct MaxDayView: View {
                         VStack(spacing: 40) {
                             VStack(spacing: 16) {
                                 Text("Max Reps")
-                                    .font(.system(size: 72, weight: .thin))
-                                    .foregroundColor(.blue)
+                                    .largePrimaryTextStyle()
                                 
                                 if showSetCompleteButton {
                                     Button(action: completeCurrentSet) {
                                         Text("Set Complete")
-                                            .font(.title2)
-                                            .fontWeight(.semibold)
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 32)
-                                            .padding(.vertical, 12)
-                                            .background(.blue)
-                                            .clipShape(Capsule())
+                                            .largePrimaryButtonTextStyle()
                                     }
                                 }
                                 
@@ -197,9 +186,8 @@ struct MaxDayView: View {
         guard let workout = workout else { return }
         
         // Save the set with reps selected on the number wheel
-        let newSet = WorkoutSet(setNumber: currentSet, reps: liveSelectedReps)
-        workout.sets.append(newSet)
-        completedSets.append(newSet)
+        workout.sets.append(liveSelectedReps)
+        completedSets.append(liveSelectedReps)
     }
     
     private func completeFinalSet() {
@@ -212,6 +200,7 @@ struct MaxDayView: View {
             currentSet += 1 // This will trigger the WorkoutCompleteCard
             showNumberWheel = false
         }
+        
     }
     
     private func maxRepsForCurrentSet() -> Int {
@@ -219,8 +208,9 @@ struct MaxDayView: View {
             return 20 // First set can go up to 20 reps
         } else {
             // For subsequent sets, limit to previous set's completed reps
-            if let previousSet = completedSets.first(where: { $0.setNumber == currentSet - 1 }) {
-                return max(previousSet.reps, 1) // Ensure at least 1 rep is possible
+            let previousSetIndex = currentSet - 2 // Convert to 0-based index
+            if previousSetIndex >= 0 && previousSetIndex < completedSets.count {
+                return max(completedSets[previousSetIndex], 1) // Ensure at least 1 rep is possible
             }
             return 20 // Fallback to 20 if previous set not found
         }
@@ -270,5 +260,5 @@ struct WorkoutCompleteCard: View {
             print("Workout complete!")
         }
     }
-    .modelContainer(for: [Workout.self, WorkoutSet.self], inMemory: true)
+    .modelContainer(for: [Workout.self], inMemory: true)
 }

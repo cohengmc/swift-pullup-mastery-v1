@@ -73,7 +73,7 @@ struct WorkoutStatsCard: View {
     let workouts: [Workout]
     
     private var completedWorkouts: [Workout] {
-        workouts.filter { $0.completed }
+        workouts.filter { !$0.sets.isEmpty }
     }
     
     private var totalReps: Int {
@@ -189,7 +189,7 @@ struct WorkoutHistoryCard: View {
                 
                 Spacer()
                 
-                if workout.completed {
+                if !workout.sets.isEmpty {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundColor(.green)
                 } else {
@@ -216,8 +216,8 @@ struct WorkoutHistoryCard: View {
                         .foregroundColor(.secondary)
                     
                     HStack {
-                        ForEach(workout.sets.sorted { $0.setNumber < $1.setNumber }, id: \.id) { set in
-                            Text("\(set.reps)")
+                        ForEach(Array(workout.sets.enumerated()), id: \.offset) { index, reps in
+                            Text("\(reps)")
                                 .font(.caption)
                                 .fontWeight(.medium)
                                 .padding(.horizontal, 8)
@@ -229,13 +229,7 @@ struct WorkoutHistoryCard: View {
                 }
             }
             
-            // Notes
-            if let notes = workout.notes, !notes.isEmpty {
-                Text(notes)
-                    .font(.caption)
-                    .padding(.top, 4)
-                    .foregroundColor(.secondary)
-            }
+            // Notes section removed - notes property no longer exists
         }
         .padding()
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -289,5 +283,5 @@ struct EmptyHistoryView: View {
 
 #Preview {
     WorkoutHistoryView()
-        .modelContainer(for: [Workout.self, WorkoutSet.self], inMemory: true)
+        .modelContainer(for: [Workout.self], inMemory: true)
 }

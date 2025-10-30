@@ -57,7 +57,6 @@ struct WorkoutView: View {
     }
     
     private func handleWorkoutComplete(_ workout: Workout) {
-        workout.completed = true
         do {
             try modelContext.save()
             showingCompletionSheet = true
@@ -158,8 +157,8 @@ struct WorkoutSummaryCard: View {
                         .fontWeight(.medium)
                     
                     HStack {
-                        ForEach(workout.sets.sorted { $0.setNumber < $1.setNumber }, id: \.id) { set in
-                            Text("\(set.reps)")
+                        ForEach(Array(workout.sets.enumerated()), id: \.offset) { index, reps in
+                            Text("\(reps)")
                                 .font(.caption)
                                 .fontWeight(.medium)
                                 .padding(.horizontal, 10)
@@ -185,5 +184,5 @@ struct WorkoutSummaryCard: View {
     NavigationView {
         WorkoutView(workoutType: .maxDay)
     }
-    .modelContainer(for: [Workout.self, WorkoutSet.self], inMemory: true)
+    .modelContainer(for: [Workout.self], inMemory: true)
 }

@@ -168,7 +168,7 @@ struct RecentWorkoutCard: View {
                 
                 Spacer()
                 
-                if workout.completed {
+                if !workout.sets.isEmpty {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.title)
                         .foregroundColor(.green)
@@ -239,5 +239,5 @@ struct ProgramInfoCard: View {
 
 #Preview {
     HomeView()
-        .modelContainer(for: [Workout.self, WorkoutSet.self], inMemory: true)
+        .modelContainer(for: [Workout.self], inMemory: true)
 }

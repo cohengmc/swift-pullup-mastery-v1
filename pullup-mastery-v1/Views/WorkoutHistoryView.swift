@@ -37,23 +37,23 @@ struct WorkoutHistoryView: View {
             }
             .navigationTitle("Workout History")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button("Clear All History", role: .destructive) {
-                            clearAllWorkouts()
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                }
-            }
+//            .toolbar {
+//                ToolbarItem(placement: .navigationBarLeading) {
+//                    Button("Done") {
+//                        dismiss()
+//                    }
+//                }
+//                
+////                ToolbarItem(placement: .navigationBarTrailing) {
+////                    Menu {
+////                        Button("Clear All History", role: .destructive) {
+////                            clearAllWorkouts()
+////                        }
+////                    } label: {
+////                        Image(systemName: "ellipsis.circle")
+////                    }
+////                }
+//            }
         }
     }
     
@@ -80,9 +80,37 @@ struct WorkoutStatsCard: View {
         completedWorkouts.reduce(0) { $0 + $1.totalReps }
     }
     
-    private var averageRepsPerWorkout: Double {
+    private var averageWorkoutsPerWeek: Double {
         guard !completedWorkouts.isEmpty else { return 0 }
-        return Double(totalReps) / Double(completedWorkouts.count)
+        
+        // Find the date range
+        let sortedWorkouts = completedWorkouts.sorted { $0.date < $1.date }
+        guard let firstDate = sortedWorkouts.first?.date,
+              let lastDate = sortedWorkouts.last?.date else { return 0 }
+        
+        // Calculate the number of weeks
+        let timeInterval = lastDate.timeIntervalSince(firstDate)
+        let days = timeInterval / (24 * 60 * 60)
+        let weeks = max(1, days / 7) // At least 1 week to avoid division by zero
+        
+        return Double(completedWorkouts.count) / weeks
+    }
+    
+    private var totalWeeks: Int {
+        guard !completedWorkouts.isEmpty else { return 0 }
+        
+        // Get unique weeks that contain workouts
+        let calendar = Calendar.current
+        var uniqueWeeks = Set<String>()
+        
+        for workout in completedWorkouts {
+            let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: workout.date)
+            if let year = components.yearForWeekOfYear, let week = components.weekOfYear {
+                uniqueWeeks.insert("\(year)-\(week)")
+            }
+        }
+        
+        return uniqueWeeks.count
     }
     
     private var workoutsByType: [WorkoutType: Int] {
@@ -95,29 +123,37 @@ struct WorkoutStatsCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Statistics")
+            Text("Stats")
                 .font(.headline)
             
             // Main stats
-            HStack(spacing: 20) {
-                StatItem(
-                    title: "Total Workouts",
-                    value: "\(completedWorkouts.count)",
-                    color: .blue
-                )
+            HStack(alignment: .top, spacing: 10) {
+                    StatItem(
+                        title: "Workouts",
+                        value: "\(completedWorkouts.count)",
+                        color: .blue
+                    )
+                    
+                    StatItem(
+                        title: "Total Reps",
+                        value: "\(totalReps)",
+                        color: .green
+                    )
+                    
+                    StatItem(
+                        title: "Workouts/Week",
+                        value: String(format: "%.1f", averageWorkoutsPerWeek),
+                        color: .orange
+                    )
+                    StatItem(
+                        title: "Weeks",
+                        value: "\(totalWeeks)",
+                        color: .red
+                    )
+                }
                 
-                StatItem(
-                    title: "Total Reps",
-                    value: "\(totalReps)",
-                    color: .green
-                )
-                
-                StatItem(
-                    title: "Avg/Workout",
-                    value: String(format: "%.1f", averageRepsPerWorkout),
-                    color: .orange
-                )
-            }
+
+            
             
             // Workout type breakdown
             if !workoutsByType.isEmpty {
@@ -148,31 +184,21 @@ struct WorkoutStatsCard: View {
     }
 }
 
-struct StatItem: View {
-    let title: String
-    let value: String
-    let color: Color
-    
-    var body: some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(color)
-            
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
 struct WorkoutHistoryCard: View {
     let workout: Workout
     @Environment(\.modelContext) private var modelContext
     @State private var showingDeleteAlert = false
+    
+    private var workoutColor: Color {
+        switch workout.type {
+        case .maxDay:
+            return .orange
+        case .subMaxVolume:
+            return .blue
+        case .ladderVolume:
+            return .green
+        }
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -200,10 +226,8 @@ struct WorkoutHistoryCard: View {
             
             // Stats
             HStack(spacing: 20) {
-                Label("\(workout.completedSets) sets", systemImage: "list.number")
-                    .font(.caption)
                 
-                Label("\(workout.totalReps) reps", systemImage: "number")
+                Label("\(workout.totalReps) Total Reps", systemImage: "number")
                     .font(.caption)
             }
             .foregroundColor(.secondary)
@@ -222,7 +246,7 @@ struct WorkoutHistoryCard: View {
                                 .fontWeight(.medium)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(.blue.opacity(0.1))
+                                .background(workoutColor.opacity(0.1))
                                 .clipShape(Capsule())
                         }
                     }
@@ -232,7 +256,11 @@ struct WorkoutHistoryCard: View {
             // Notes section removed - notes property no longer exists
         }
         .padding()
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(workoutColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(workoutColor.opacity(0.3), lineWidth: 1)
+        )
         .swipeActions(edge: .trailing) {
             Button("Delete", role: .destructive) {
                 showingDeleteAlert = true
@@ -282,6 +310,29 @@ struct EmptyHistoryView: View {
 }
 
 #Preview {
-    WorkoutHistoryView()
-        .modelContainer(for: [Workout.self], inMemory: true)
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: Workout.self, configurations: config)
+    let context = container.mainContext
+    
+    // Create sample workouts for testing
+    let workout1 = Workout(type: .maxDay, date: Date().addingTimeInterval(-86400 * 2)) // 2 days ago
+    workout1.sets = [8, 7, 6]
+    
+    let workout2 = Workout(type: .subMaxVolume, date: Date().addingTimeInterval(-86400)) // 1 day ago
+    workout2.sets = [5, 5, 5, 5, 5, 4, 4, 4, 4, 4]
+    
+    let workout3 = Workout(type: .ladderVolume, date: Date()) // Today
+    workout3.sets = [5, 4, 3]
+    
+    let workout4 = Workout(type: .maxDay, date: Date().addingTimeInterval(-86400 * 3)) // 3 days ago
+    workout4.sets = [9, 8, 7]
+    
+    // Insert workouts into context
+    context.insert(workout1)
+    context.insert(workout2)
+    context.insert(workout3)
+    context.insert(workout4)
+    
+    return WorkoutHistoryView()
+        .modelContainer(container)
 }

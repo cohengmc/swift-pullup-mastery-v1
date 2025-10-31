@@ -25,24 +25,32 @@ struct HomeView: View {
                         Text("Pull Up Mastery")
                             .font(.largeTitle)
                             .fontWeight(.bold)
-                        
-                        Text("Build strength with the proven 3-day program")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
                     }
                     .padding(.top)
                     
                     // Recent workout summary
                     if let lastWorkout = workouts.first {
+                        SimpleStatsCard(workouts: workouts)
                         RecentWorkoutCard(workout: lastWorkout)
                     }
                     
                     // Workout type selection
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Select Workout")
-                            .font(.headline)
-                            .padding(.horizontal)
+                        
+                        HStack(){
+                            Text("Start Workout")
+                                .font(.headline)
+                                .padding(.horizontal)
+                            
+                            Spacer()
+                            
+                            NavigationLink(destination: WorkoutHistoryView()) {
+                                Image(systemName: "plus")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
+                            }.padding(.horizontal)
+                        }
+                        
                         
                         LazyVStack(spacing: 12) {
                             ForEach(WorkoutType.allCases, id: \.self) { workoutType in
@@ -55,17 +63,6 @@ struct HomeView: View {
                     // Program info
                     ProgramInfoCard()
                         .padding(.horizontal)
-                }
-            }
-            .navigationTitle("")
-            .navigationBarHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: WorkoutHistoryView()) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.title2)
-                            .foregroundColor(.blue)
-                    }
                 }
             }
         }
@@ -159,6 +156,10 @@ struct ProgramInfoCard: View {
             
             if isExpanded {
                 VStack(alignment: .leading, spacing: 8) {
+                    Text("Build strength with the proven 3-day program")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
                     Text("Prerequisites: 5-12 Pull Ups")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -170,11 +171,6 @@ struct ProgramInfoCard: View {
                     Text("Schedule: 3 non-consecutive days per week")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
-                    Text("This program has been used for nearly a decade with elite Military and Law Enforcement personnel.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .padding(.top, 4)
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }

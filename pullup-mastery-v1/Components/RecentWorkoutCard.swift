@@ -32,9 +32,11 @@ struct RecentWorkoutCard: View {
                         .fontWeight(.semibold)
                     
                     HStack(spacing: 16) {
-                        Label("\(workout.sets[0]) reps in first set", systemImage: "1.circle.fill")
-                            .font(.caption)
-                            .foregroundColor(.green)
+                        if !workout.sets.isEmpty {
+                            Label("\(workout.sets[0]) reps in first set", systemImage: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        }
                         
                         Label("\(workout.totalReps) Total Reps", systemImage: "number.circle.fill")
                             .font(.caption)

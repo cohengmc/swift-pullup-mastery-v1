@@ -15,8 +15,8 @@ extension Color {
     static let pullupRed = Color(red: 0.9, green: 0.3, blue: 0.3)
     
     // Workout type colors
-    static let maxDayColor = pullupRed
-    static let subMaxColor = pullupOrange  
+    static let maxDayColor = pullupOrange
+    static let subMaxColor = pullupBlue
     static let ladderColor = pullupGreen
     
     // UI colors

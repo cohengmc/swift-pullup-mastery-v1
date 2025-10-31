@@ -11,6 +11,7 @@ import SwiftData
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    @State private var showingManualEntry = false
     
     var body: some View {
         NavigationView {
@@ -44,11 +45,14 @@ struct HomeView: View {
                             
                             Spacer()
                             
-                            NavigationLink(destination: WorkoutHistoryView()) {
+                            Button(action: {
+                                showingManualEntry = true
+                            }) {
                                 Image(systemName: "plus")
                                     .font(.title2)
                                     .foregroundColor(.blue)
-                            }.padding(.horizontal)
+                            }
+                            .padding(.horizontal)
                         }
                         
                         
@@ -65,6 +69,9 @@ struct HomeView: View {
                         .padding(.horizontal)
                 }
             }
+        }
+        .sheet(isPresented: $showingManualEntry) {
+            ManualWorkoutEntryView()
         }
     }
 }

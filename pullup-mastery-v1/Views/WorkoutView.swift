@@ -14,55 +14,63 @@ struct WorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var currentWorkout: Workout?
-    @State private var showingCompletionSheet = false
+    @State private var showingCompletionView = false
     @State private var showingExitAlert = false
     
     var body: some View {
         Group {
-            switch workoutType {
-            case .maxDay:
-                MaxDayView(
-                    workout: currentWorkout,
-                    onWorkoutComplete: handleWorkoutComplete
-                )
-            case .subMaxVolume:
-                SubMaxVolumeView(
-                    workout: currentWorkout,
-                    onWorkoutComplete: handleWorkoutComplete
-                )
-            case .ladderVolume:
-                LadderVolumeView(
-                    workout: currentWorkout,
-                    onWorkoutComplete: handleWorkoutComplete
-                )
-            }
-        }
-        .navigationTitle(workoutType.rawValue)
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    if isWorkoutIncomplete() {
-                        showingExitAlert = true
-                    } else {
-                        dismiss()
+            if showingCompletionView, let workout = currentWorkout {
+                // Show summary view when workout is complete
+                WorkoutSummaryView(workout: workout) {
+                    // Pop all the way back to HomeView
+                    // First dismiss() pops WorkoutSummaryView back to WorkoutView
+                    // Then onDismiss (this closure) dismisses WorkoutView back to HomeView
+                    dismiss()
+                }
+            } else {
+                // Show active workout view
+                Group {
+                    switch workoutType {
+                    case .maxDay:
+                        MaxDayView(
+                            workout: currentWorkout,
+                            onWorkoutComplete: handleWorkoutComplete
+                        )
+                    case .subMaxVolume:
+                        SubMaxVolumeView(
+                            workout: currentWorkout,
+                            onWorkoutComplete: handleWorkoutComplete
+                        )
+                    case .ladderVolume:
+                        LadderVolumeView(
+                            workout: currentWorkout,
+                            onWorkoutComplete: handleWorkoutComplete
+                        )
                     }
-                }) {
-                    HStack {
-                        Image(systemName: "chevron.left").fontWeight(       .heavy)
+                }
+                .navigationTitle(workoutType.rawValue)
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationBarBackButtonHidden(true)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button(action: {
+                            if isWorkoutIncomplete() {
+                                showingExitAlert = true
+                            } else {
+                                dismiss()
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "chevron.left").fontWeight(.heavy)
+                            }
+                        }
                     }
                 }
             }
         }
         .onAppear {
-            createNewWorkout()
-        }
-        .sheet(isPresented: $showingCompletionSheet) {
-            if let workout = currentWorkout {
-                WorkoutSummaryView(workout: workout) {
-                    dismiss()
-                }
+            if currentWorkout == nil {
+                createNewWorkout()
             }
         }
         .confirmationDialog("Do you want to exit workout?", isPresented: $showingExitAlert, titleVisibility: .visible) {
@@ -86,7 +94,7 @@ struct WorkoutView: View {
     private func handleWorkoutComplete(_ workout: Workout) {
         do {
             try modelContext.save()
-            showingCompletionSheet = true
+            showingCompletionView = true
         } catch {
             print("Error saving completed workout: \(error)")
         }

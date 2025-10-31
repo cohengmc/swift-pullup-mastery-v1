@@ -15,6 +15,7 @@ struct WorkoutView: View {
     
     @State private var currentWorkout: Workout?
     @State private var showingCompletionSheet = false
+    @State private var showingExitAlert = false
     
     var body: some View {
         Group {
@@ -38,6 +39,22 @@ struct WorkoutView: View {
         }
         .navigationTitle(workoutType.rawValue)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    if isWorkoutIncomplete() {
+                        showingExitAlert = true
+                    } else {
+                        dismiss()
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "chevron.left").fontWeight(       .heavy)
+                    }
+                }
+            }
+        }
         .onAppear {
             createNewWorkout()
         }
@@ -47,6 +64,16 @@ struct WorkoutView: View {
                     dismiss()
                 }
             }
+        }
+        .confirmationDialog("Do you want to exit workout?", isPresented: $showingExitAlert, titleVisibility: .visible) {
+            Button("Yes, exit workout", role: .destructive) {
+                exitWorkout()
+            }
+            Button("No, finish workout", role: .cancel) {
+                // Stay on workout view - do nothing
+            }
+        } message: {
+            Text("Workout data will be lost")
         }
     }
     
@@ -63,6 +90,25 @@ struct WorkoutView: View {
         } catch {
             print("Error saving completed workout: \(error)")
         }
+    }
+    
+    private func isWorkoutIncomplete() -> Bool {
+        guard let workout = currentWorkout else { return true }
+        // Workout is incomplete if it has no sets or doesn't have the expected number of sets
+        return workout.sets.isEmpty || workout.sets.count < workout.type.maxSets
+    }
+    
+    private func exitWorkout() {
+        // Delete the incomplete workout from the model context
+        if let workout = currentWorkout {
+            modelContext.delete(workout)
+            do {
+                try modelContext.save()
+            } catch {
+                print("Error deleting workout: \(error)")
+            }
+        }
+        dismiss()
     }
 }
 

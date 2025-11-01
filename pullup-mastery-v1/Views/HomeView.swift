@@ -32,7 +32,7 @@ struct HomeView: View {
                     // Recent workout summary
                     if let lastWorkout = workouts.first {
                         SimpleStatsCard(workouts: workouts)
-                        RecentWorkoutCard(workout: lastWorkout)
+                        WorkoutCard(workout: lastWorkout, isLastWorkout: true)
                     }
                     
                     // Workout type selection

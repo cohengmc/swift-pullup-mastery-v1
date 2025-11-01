@@ -19,19 +19,21 @@ struct WorkoutHistoryView: View {
                 if workouts.isEmpty {
                     EmptyHistoryView()
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 16) {
-                            // Summary stats
-                            WorkoutStatsCard(workouts: workouts)
-                                .padding(.horizontal)
-                            
-                            // Workout list
-                            ForEach(workouts) { workout in
-                                WorkoutHistoryCard(workout: workout)
-                                    .padding(.horizontal)
+                    VStack(spacing: 0) {
+                        // Summary stats (fixed at top)
+                        WorkoutStatsCard(workouts: workouts)
+                            .padding(.horizontal)
+                            .padding(.top)
+                        
+                        // Workout list (scrollable)
+                        ScrollView {
+                            LazyVStack(spacing: 16) {
+                                ForEach(Array(workouts.enumerated()), id: \.element.id) { index, workout in
+                                    WorkoutCard(workout: workout, isLastWorkout: index == 0)
+                                }
                             }
+                            .padding(.vertical)
                         }
-                        .padding(.vertical)
                     }
                 }
             }
@@ -184,108 +186,31 @@ struct WorkoutStatsCard: View {
     }
 }
 
-struct WorkoutHistoryCard: View {
-    let workout: Workout
-    @Environment(\.modelContext) private var modelContext
-    @State private var showingDeleteAlert = false
+
+//        .swipeActions(edge: .trailing) {
+//            Button("Delete", role: .destructive) {
+//                showingDeleteAlert = true
+//            }
+//        }
+//        .alert("Delete Workout", isPresented: $showingDeleteAlert) {
+//            Button("Cancel", role: .cancel) { }
+//            Button("Delete", role: .destructive) {
+//                deleteWorkout()
+//            }
+//        } message: {
+//            Text("Are you sure you want to delete this workout? This action cannot be undone.")
+//        }
     
-    private var workoutColor: Color {
-        switch workout.type {
-        case .maxDay:
-            return .orange
-        case .subMaxVolume:
-            return .blue
-        case .ladderVolume:
-            return .green
-        }
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(workout.type.rawValue)
-                        .font(.headline)
-                    
-                    Text(workout.date, style: .date)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                if !workout.sets.isEmpty {
-                    Image(systemName: "checkmark.seal.fill")
-                        .foregroundColor(.green)
-                } else {
-                    Image(systemName: "clock")
-                        .foregroundColor(.orange)
-                }
-            }
-            
-            // Stats
-            HStack(spacing: 20) {
-                
-                Label("\(workout.totalReps) Total Reps", systemImage: "number")
-                    .font(.caption)
-            }
-            .foregroundColor(.secondary)
-            
-            // Rep breakdown
-            if !workout.sets.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Reps per set:")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    HStack {
-                        ForEach(Array(workout.sets.enumerated()), id: \.offset) { index, reps in
-                            Text("\(reps)")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(workoutColor.opacity(0.1))
-                                .clipShape(Capsule())
-                        }
-                    }
-                }
-            }
-            
-        }
-        .padding()
-        .background(workoutColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(workoutColor.opacity(0.3), lineWidth: 1)
-        )
-        .swipeActions(edge: .trailing) {
-            Button("Delete", role: .destructive) {
-                showingDeleteAlert = true
-            }
-        }
-        .alert("Delete Workout", isPresented: $showingDeleteAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                deleteWorkout()
-            }
-        } message: {
-            Text("Are you sure you want to delete this workout? This action cannot be undone.")
-        }
-    }
-    
-    private func deleteWorkout() {
-        withAnimation {
-            modelContext.delete(workout)
-            do {
-                try modelContext.save()
-            } catch {
-                print("Error deleting workout: \(error)")
-            }
-        }
-    }
-}
+//    private func deleteWorkout() {
+//        withAnimation {
+//            modelContext.delete(workout)
+//            do {
+//                try modelContext.save()
+//            } catch {
+//                print("Error deleting workout: \(error)")
+//            }
+//        }
+//    }
 
 struct EmptyHistoryView: View {
     var body: some View {
@@ -314,16 +239,16 @@ struct EmptyHistoryView: View {
     let context = container.mainContext
     
     // Create sample workouts for testing
-    let workout1 = Workout(type: .maxDay, date: Date().addingTimeInterval(-86400 * 2)) // 2 days ago
+    let workout1 = Workout(type: .maxDay, date: Date().addingTimeInterval(-86400 * 4)) // 4 days ago
     workout1.sets = [8, 7, 6]
     
-    let workout2 = Workout(type: .subMaxVolume, date: Date().addingTimeInterval(-86400)) // 1 day ago
+    let workout2 = Workout(type: .subMaxVolume, date: Date().addingTimeInterval(-86400*2)) // 2 day ago
     workout2.sets = [5, 5, 5, 5, 5, 4, 4, 4, 4, 4]
     
     let workout3 = Workout(type: .ladderVolume, date: Date()) // Today
     workout3.sets = [5, 4, 3]
     
-    let workout4 = Workout(type: .maxDay, date: Date().addingTimeInterval(-86400 * 3)) // 3 days ago
+    let workout4 = Workout(type: .maxDay, date: Date().addingTimeInterval(-86400 * 8)) // 8 days ago
     workout4.sets = [9, 8, 7]
     
     // Insert workouts into context

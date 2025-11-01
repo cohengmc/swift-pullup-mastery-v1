@@ -1,5 +1,5 @@
 //
-//  RecentWorkoutCard.swift
+//  WorkoutCard.swift
 //  pullup-mastery-v1
 //
 //  Created by Geoffrey Cohen on 10/31/25.
@@ -8,8 +8,14 @@
 import SwiftUI
 import SwiftData
 
-struct RecentWorkoutCard: View {
+struct WorkoutCard: View {
     let workout: Workout
+    let isLastWorkout: Bool
+    
+    init(workout: Workout, isLastWorkout: Bool = false) {
+        self.workout = workout
+        self.isLastWorkout = isLastWorkout
+    }
     
     private var workoutColor: Color {
         switch workout.type {
@@ -29,9 +35,11 @@ struct RecentWorkoutCard: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
                     
-                    Text("Last Workout")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
+                    if isLastWorkout {
+                        Text("Last Workout")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
                     
                     Text(workout.type.rawValue)
                         .font(.title3)
@@ -49,7 +57,7 @@ struct RecentWorkoutCard: View {
                     
                     Label("\(workout.totalReps) Total Reps", systemImage: "number.circle.fill")
                         .font(.caption)
-                        .foregroundColor(.blue)
+                        .foregroundColor(.green)
                 }
                 
             }
@@ -113,6 +121,7 @@ private enum WorkoutSummaryPreviewData {
 }
 
 #Preview {
-    RecentWorkoutCard(workout: WorkoutSummaryPreviewData.sampleWorkout)
+    WorkoutCard(workout: WorkoutSummaryPreviewData.sampleWorkout)
     .modelContainer(for: [Workout.self], inMemory: true)
 }
+

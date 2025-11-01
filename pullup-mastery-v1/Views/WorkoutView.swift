@@ -20,6 +20,19 @@ struct WorkoutView: View {
     var body: some View {
         Group {
             if showingCompletionView, let workout = currentWorkout {
+                
+                // Celebration header
+                VStack(spacing: 16) {
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 80))
+                        .foregroundColor(.yellow)
+                    
+                    Text("Workout Complete!")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                    
+                }
+                
                 // Show summary view when workout is complete
                 WorkoutSummaryView(workout: workout) {
                     // Pop all the way back to HomeView

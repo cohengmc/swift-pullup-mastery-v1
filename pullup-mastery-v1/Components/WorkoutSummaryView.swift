@@ -17,21 +17,7 @@ struct WorkoutSummaryView: View {
     @State private var showingEditSheet = false
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Celebration header
-                VStack(spacing: 16) {
-                    Image(systemName: "trophy.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.yellow)
-                    
-                    Text("Workout Complete!")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                    
-                }
-                
-                
+            VStack(alignment: .center, spacing: 24) {
                 
                 RepBreakdownChart(
                     title: workout.type.rawValue,
@@ -88,15 +74,13 @@ struct WorkoutSummaryView: View {
                     
                 }
                 
-                Spacer()
             }
             .padding()
-        }
-        .navigationTitle("Workout Complete")
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .sheet(isPresented: $showingEditSheet) {
-            EditWorkoutView(workout: workout)
+            .navigationTitle("Workout Complete")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .sheet(isPresented: $showingEditSheet) {
+                EditWorkoutView(workout: workout)
         }
     }
     

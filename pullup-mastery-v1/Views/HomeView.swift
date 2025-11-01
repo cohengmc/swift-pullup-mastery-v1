@@ -51,8 +51,10 @@ struct HomeView: View {
                                 Image(systemName: "plus")
                                     .font(.title2)
                                     .foregroundColor(.blue)
+                                    
                             }
                             .padding(.horizontal)
+                            .padding(.trailing, 16)
                         }
                         
                         
@@ -111,7 +113,8 @@ struct WorkoutTypeCard: View {
                 // Arrow
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.blue)
+                    .padding(.trailing, 8)
             }
             .padding()
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -155,8 +158,9 @@ struct ProgramInfoCard: View {
                     
                     Image(systemName: "chevron.down")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.blue)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .padding(.trailing, 8)
                 }
             }
             .buttonStyle(PlainButtonStyle())

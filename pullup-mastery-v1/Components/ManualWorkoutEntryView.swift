@@ -35,7 +35,7 @@ struct ManualWorkoutEntryView: View {
                         
                         // Date Picker
                         VStack(alignment: .center, spacing: 12) {
-                            Text("Workout Date")
+                            Text("Date")
                                 .font(.headline)
                                 .padding(.horizontal)
                             
@@ -47,14 +47,16 @@ struct ManualWorkoutEntryView: View {
                             )
                             .datePickerStyle(.compact)
                             .padding(.horizontal)
+                            .padding(.trailing, 8)
                         }
                         .padding(.vertical, 8)
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
                         .padding(.horizontal)
+                        .padding(.trailing, 8)
                         
                         // Workout Type Picker
                         VStack(alignment: .center, spacing: 12) {
-                            Text("Workout Type")
+                            Text("Type")
                                 .font(.headline)
                                 .padding(.horizontal)
                             
@@ -86,7 +88,7 @@ struct ManualWorkoutEntryView: View {
                 }
                 .padding(.top)
             }
-            .navigationTitle("Manual Entry")
+            .navigationTitle("Save Workout Manually")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

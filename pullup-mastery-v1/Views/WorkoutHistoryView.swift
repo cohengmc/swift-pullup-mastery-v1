@@ -253,7 +253,6 @@ struct WorkoutHistoryCard: View {
                 }
             }
             
-            // Notes section removed - notes property no longer exists
         }
         .padding()
         .background(workoutColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))

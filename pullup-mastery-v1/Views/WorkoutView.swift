@@ -34,7 +34,7 @@ struct WorkoutView: View {
                 }
                 
                 // Show summary view when workout is complete
-                WorkoutSummaryView(workout: workout) {
+                WorkoutSummaryView(workout: workout, showDeleteButton: false) {
                     // Pop all the way back to HomeView
                     // First dismiss() pops WorkoutSummaryView back to WorkoutView
                     // Then onDismiss (this closure) dismisses WorkoutView back to HomeView

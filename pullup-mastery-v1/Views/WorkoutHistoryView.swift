@@ -12,6 +12,8 @@ struct WorkoutHistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedWorkout: Workout?
+    @State private var showingWorkoutSheet = false
     
     var body: some View {
         NavigationView {
@@ -30,6 +32,10 @@ struct WorkoutHistoryView: View {
                             LazyVStack(spacing: 16) {
                                 ForEach(Array(workouts.enumerated()), id: \.element.id) { index, workout in
                                     WorkoutCard(workout: workout, isLastWorkout: index == 0)
+                                        .onTapGesture {
+                                            selectedWorkout = workout
+                                            showingWorkoutSheet = true
+                                        }
                                 }
                             }
                             .padding(.vertical)
@@ -39,6 +45,16 @@ struct WorkoutHistoryView: View {
             }
             .navigationTitle("Workout History")
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showingWorkoutSheet) {
+                if let workout = selectedWorkout {
+                    NavigationView {
+                        WorkoutSummaryView(workout: workout, showDeleteButton: true) {
+                            showingWorkoutSheet = false
+                            selectedWorkout = nil
+                        }
+                    }
+                }
+            }
 //            .toolbar {
 //                ToolbarItem(placement: .navigationBarLeading) {
 //                    Button("Done") {
@@ -246,7 +262,7 @@ struct EmptyHistoryView: View {
     workout2.sets = [5, 5, 5, 5, 5, 4, 4, 4, 4, 4]
     
     let workout3 = Workout(type: .ladderVolume, date: Date()) // Today
-    workout3.sets = [5, 4, 3]
+    workout3.sets = [5, 4,4,4, 3]
     
     let workout4 = Workout(type: .maxDay, date: Date().addingTimeInterval(-86400 * 8)) // 8 days ago
     workout4.sets = [9, 8, 7]

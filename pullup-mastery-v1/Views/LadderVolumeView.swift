@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct LadderVolumeView: View {
     let workout: Workout?
@@ -32,17 +33,17 @@ struct LadderVolumeView: View {
     private var nextRepText: String {
         if isCurrentSetConfirmed {
             if currentLadder >= totalLadders {
-                return "Next: Done!"
+                return "Done!"
             } else {
-                return "Next: 1 Rep"
+                return "1 Rep"
             }
         } else {
-            return "Next: \(currentRepInLadder) Rep\(currentRepInLadder == 1 ? "" : "s")"
+            return "\(currentRepInLadder) Rep\(currentRepInLadder == 1 ? "" : "s")"
         }
     }
     
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 20) {
             // UPDATED: Pass completed reps count instead of next rep number
             SetProgressView(
                 totalSets: totalLadders,
@@ -52,17 +53,21 @@ struct LadderVolumeView: View {
             .padding(.top, 24)
             .padding(.horizontal, 20)
             
-            Spacer()
+            if !isResting{
+                Spacer()
+            }
             
             if currentLadder <= totalLadders {
                 if isResting {
                     // Rest phase between individual reps
                     VStack(spacing: 40) {
-                        VStack(spacing: 12) {
+                        HStack() {
                                 
-                    
-                            Text(nextRepText)
+                            Text("Next:")
                                 .largeSecondaryTextStyle()
+                            Text(nextRepText)
+                                .font(.system(size: 64, weight: .medium))
+                                .foregroundColor(.white)
                         }
                         
                         // 30-second timer with improved UI - centered horizontally
@@ -91,39 +96,44 @@ struct LadderVolumeView: View {
                             if isCurrentSetConfirmed {
                                 Button(action: undoSetComplete) {
                                     Text("Undo Set Complete")
-                                        .font(.title3)
+                                        .font(.title)
                                         .fontWeight(.semibold)
                                         .foregroundColor(.white)
-                                        .padding(.horizontal, 24)
-                                        .padding(.vertical, 10)
+                                        .padding(.horizontal, 32)
+                                        .padding(.vertical, 12)
                                         .background(.orange)
                                         .clipShape(Capsule())
+
                                 }
                             } else {
                                 Button(action: completeSet) {
                                     Text("Set Complete")
-                                        .font(.title3)
+                                        .font(.title)
                                         .fontWeight(.semibold)
                                         .foregroundColor(.white)
-                                        .padding(.horizontal, 28)
-                                        .padding(.vertical, 10)
+                                        .padding(.horizontal, 32)
+                                        .padding(.vertical, 12)
                                         .background(.green)
                                         .clipShape(Capsule())
                                 }
                             }
                         }
                         
-                        // Skip Rest button
-                        Button(action: completeRest) {
-                            Text("Skip Rest")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 32)
-                                .padding(.vertical, 12)
-                                .background(.blue)
-                                .clipShape(Capsule())
+                        // Skip Rest button (DEBUG only, controlled by feature flag)
+                        #if DEBUG
+                        if FeatureFlags.hideFeature {
+                            Button(action: completeRest) {
+                                Text("Skip Rest")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 32)
+                                    .padding(.vertical, 12)
+                                    .background(.blue)
+                                    .clipShape(Capsule())
+                            }
                         }
+                        #endif
                     }
                 } else {
                     // Active rep phase (matching third image layout)
@@ -165,6 +175,14 @@ struct LadderVolumeView: View {
         .animation(.easeInOut(duration: 0.5), value: isResting)
         .animation(.easeInOut(duration: 0.3), value: currentLadder)
         .animation(.easeInOut(duration: 0.3), value: currentRepInLadder)
+        .onAppear {
+            // Keep screen awake during entire workout
+            UIApplication.shared.isIdleTimerDisabled = true
+        }
+        .onDisappear {
+            // Re-enable screen sleep when view disappears
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
     }
     
     private func completeCurrentRep() {
@@ -218,6 +236,13 @@ struct LadderVolumeView: View {
             isCurrentSetConfirmed = true
             displayLadder = min(currentLadder + 1, totalLadders + 1)
         }
+        
+        // If we're not in rest phase, immediately advance to next ladder
+        // Otherwise, wait for timer to complete which will call completeLadder()
+        if !isResting {
+            completeLadder()
+        }
+        // Note: If isResting is true, the timer completion handler will call completeLadder()
     }
     
     private func undoSetComplete() {

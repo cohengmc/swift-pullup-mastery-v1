@@ -7,12 +7,16 @@
 
 import SwiftUI
 import Combine
+import UIKit
 
 struct SimpleCountdownTimer: View {
     @StateObject private var timerManager = CountdownTimerManager()
     let initialTime: Int
     let onTimerComplete: () -> Void
     let showFastForward: Bool
+    
+    // Unique ID for this timer instance to persist across backgrounding
+    @State private var timerID: UUID = UUID()
     
     init(initialTime: Int, showFastForward: Bool = false, onTimerComplete: @escaping () -> Void = {}) {
         self.initialTime = initialTime
@@ -56,8 +60,9 @@ struct SimpleCountdownTimer: View {
                 }
             
             
-            // Temporary fast forward button (for testing only)
-            if showFastForward && timerManager.hasStarted && timerManager.timeRemaining > 5 {
+            // Temporary fast forward button (for testing only - DEBUG only, controlled by feature flag)
+            #if DEBUG
+            if FeatureFlags.hideFeature && showFastForward && timerManager.hasStarted && timerManager.timeRemaining > 5 {
                 Button(action: {
                     timerManager.fastForwardTo5Seconds()
                     HapticManager.shared.light()
@@ -74,15 +79,19 @@ struct SimpleCountdownTimer: View {
                     .clipShape(Capsule())
                 }
             }
+            #endif
         }
         .onAppear {
-            timerManager.startTimer(duration: initialTime)
+            timerManager.startTimer(duration: initialTime, timerID: timerID)
         }
         .onReceive(timerManager.$timeRemaining) { time in
             if time == 0 && timerManager.hasStarted {
                 onTimerComplete()
                 HapticManager.shared.success()
             }
+        }
+        .onDisappear {
+            timerManager.cleanup(timerID: timerID)
         }
     }
 }
@@ -95,6 +104,12 @@ class CountdownTimerManager: ObservableObject {
     private var timer: AnyCancellable?
     private var totalTime: Int = 0
     private var exactTimeRemaining: Double = 0.0
+    private var timerEndTime: Date?
+    private var currentTimerID: UUID?
+    
+    // NotificationCenter observers for app lifecycle
+    private var backgroundObserver: AnyCancellable?
+    private var foregroundObserver: AnyCancellable?
     
     var timeString: String {
         let minutes = timeRemaining / 60
@@ -102,42 +117,162 @@ class CountdownTimerManager: ObservableObject {
         return String(format: "%d:%02d", minutes, seconds)
     }
     
-    func startTimer(duration: Int) {
+    init() {
+        setupAppLifecycleObservers()
+    }
+    
+    func startTimer(duration: Int, timerID: UUID) {
         totalTime = duration
-        timeRemaining = duration
         exactTimeRemaining = Double(duration)
+        timeRemaining = duration
         hasStarted = true
+        currentTimerID = timerID
+        timerEndTime = Date().addingTimeInterval(exactTimeRemaining)
+        
+        // Save to UserDefaults for persistence
+        saveTimerState(timerID: timerID)
+        
         updateProgress()
         
         timer = Timer.publish(every: 0.01, on: .main, in: .common)
             .autoconnect()
             .sink { _ in
-                if self.exactTimeRemaining > 0 {
-                    self.exactTimeRemaining -= 0.01
-                    let newTimeRemaining = Int(ceil(self.exactTimeRemaining))
-                    
-                    if newTimeRemaining != self.timeRemaining {
-                        self.timeRemaining = newTimeRemaining
-                    }
-                    
-                    self.updateProgress()
-                } else {
-                    self.exactTimeRemaining = 0
-                    self.timeRemaining = 0
-                    self.stopTimer()
-                }
+                self.updateTimer()
             }
+    }
+    
+    private func updateTimer() {
+        // If we have a target end time, calculate remaining based on actual time
+        if let endTime = timerEndTime {
+            let now = Date()
+            let remaining = endTime.timeIntervalSince(now)
+            
+            if remaining > 0 {
+                exactTimeRemaining = remaining
+                let newTimeRemaining = Int(ceil(exactTimeRemaining))
+                
+                if newTimeRemaining != timeRemaining {
+                    timeRemaining = newTimeRemaining
+                }
+                
+                updateProgress()
+                saveTimerState(timerID: currentTimerID)
+            } else {
+                // Timer expired
+                exactTimeRemaining = 0
+                timeRemaining = 0
+                stopTimer()
+            }
+        } else {
+            // Fallback to old behavior if no end time set
+            if exactTimeRemaining > 0 {
+                exactTimeRemaining -= 0.01
+                let newTimeRemaining = Int(ceil(exactTimeRemaining))
+                
+                if newTimeRemaining != timeRemaining {
+                    timeRemaining = newTimeRemaining
+                }
+                
+                updateProgress()
+            } else {
+                exactTimeRemaining = 0
+                timeRemaining = 0
+                stopTimer()
+            }
+        }
     }
     
     func stopTimer() {
         hasStarted = false
         timer?.cancel()
+        timer = nil
+        
+        // Clear persisted state
+        if let timerID = currentTimerID {
+            clearTimerState(timerID: timerID)
+        }
+        
+        timerEndTime = nil
+        currentTimerID = nil
     }
     
     func fastForwardTo5Seconds() {
+        timerEndTime = Date().addingTimeInterval(5.0)
         exactTimeRemaining = 5.0
         timeRemaining = 5
         updateProgress()
+        
+        if let timerID = currentTimerID {
+            saveTimerState(timerID: timerID)
+        }
+    }
+    
+    func cleanup(timerID: UUID) {
+        // Only cleanup if this is the current timer
+        if currentTimerID == timerID {
+            stopTimer()
+        }
+    }
+    
+    private func setupAppLifecycleObservers() {
+        // Observe when app goes to background
+        backgroundObserver = NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)
+            .sink { [weak self] _ in
+                self?.saveTimerState(timerID: self?.currentTimerID)
+            }
+        
+        // Observe when app comes to foreground
+        foregroundObserver = NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                self?.restoreTimerFromBackground()
+            }
+    }
+    
+    private func saveTimerState(timerID: UUID?) {
+        guard let timerID = timerID, let endTime = timerEndTime else { return }
+        
+        let key = "timer_\(timerID.uuidString)"
+        UserDefaults.standard.set(endTime.timeIntervalSince1970, forKey: key)
+        UserDefaults.standard.set(totalTime, forKey: "\(key)_total")
+    }
+    
+    private func restoreTimerFromBackground() {
+        guard let timerID = currentTimerID, hasStarted else { return }
+        
+        let key = "timer_\(timerID.uuidString)"
+        guard let endTimeInterval = UserDefaults.standard.object(forKey: key) as? TimeInterval else { return }
+        
+        // Restore totalTime if available
+        if let savedTotalTime = UserDefaults.standard.object(forKey: "\(key)_total") as? Int {
+            totalTime = savedTotalTime
+        }
+        
+        let savedEndTime = Date(timeIntervalSince1970: endTimeInterval)
+        let now = Date()
+        let remaining = savedEndTime.timeIntervalSince(now)
+        
+        if remaining > 0 {
+            // Timer still has time remaining - restore it
+            timerEndTime = savedEndTime
+            exactTimeRemaining = remaining
+            timeRemaining = Int(ceil(exactTimeRemaining))
+            updateProgress()
+        } else {
+            // Timer expired while in background - set to 0 first (before stopping) to trigger completion
+            exactTimeRemaining = 0
+            timeRemaining = 0
+            updateProgress()
+            // Give a moment for the @Published update to propagate and trigger onReceive
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.stopTimer()
+            }
+        }
+    }
+    
+    private func clearTimerState(timerID: UUID) {
+        let key = "timer_\(timerID.uuidString)"
+        UserDefaults.standard.removeObject(forKey: key)
+        UserDefaults.standard.removeObject(forKey: "\(key)_total")
     }
     
     private func updateProgress() {

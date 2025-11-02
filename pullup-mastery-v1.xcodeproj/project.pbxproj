@@ -24,7 +24,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		8245DCC02EB145210041A119 /* pullup-mastery-v1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "pullup-mastery-v1.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8245DCC02EB145210041A119 /* Pull Ups.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Pull Ups.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8245DCD32EB145220041A119 /* pullup-mastery-v1Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "pullup-mastery-v1Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8245DCDD2EB145220041A119 /* pullup-mastery-v1UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "pullup-mastery-v1UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -85,7 +85,7 @@
 		8245DCC12EB145210041A119 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				8245DCC02EB145210041A119 /* pullup-mastery-v1.app */,
+				8245DCC02EB145210041A119 /* Pull Ups.app */,
 				8245DCD32EB145220041A119 /* pullup-mastery-v1Tests.xctest */,
 				8245DCDD2EB145220041A119 /* pullup-mastery-v1UITests.xctest */,
 			);
@@ -114,7 +114,7 @@
 			packageProductDependencies = (
 			);
 			productName = "pullup-mastery-v1";
-			productReference = 8245DCC02EB145210041A119 /* pullup-mastery-v1.app */;
+			productReference = 8245DCC02EB145210041A119 /* Pull Ups.app */;
 			productType = "com.apple.product-type.application";
 		};
 		8245DCD22EB145220041A119 /* pullup-mastery-v1Tests */ = {
@@ -420,7 +420,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "geoffcohen.pullup-mastery-v1";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Pull Ups";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -462,7 +462,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "geoffcohen.pullup-mastery-v1";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Pull Ups";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

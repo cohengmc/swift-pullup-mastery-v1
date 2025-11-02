@@ -13,48 +13,42 @@ struct WorkoutHistoryView: View {
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @Environment(\.dismiss) private var dismiss
     @State private var selectedWorkout: Workout?
-    @State private var showingWorkoutSheet = false
     
     var body: some View {
-        NavigationView {
-            Group {
-                if workouts.isEmpty {
-                    EmptyHistoryView()
-                } else {
-                    VStack(spacing: 0) {
-                        // Summary stats (fixed at top)
-                        WorkoutStatsCard(workouts: workouts)
-                            .padding(.horizontal)
-                            .padding(.top)
-                        
-                        // Workout list (scrollable)
-                        ScrollView {
-                            LazyVStack(spacing: 16) {
-                                ForEach(Array(workouts.enumerated()), id: \.element.id) { index, workout in
-                                    WorkoutCard(workout: workout, isLastWorkout: index == 0)
-                                        .onTapGesture {
-                                            selectedWorkout = workout
-                                            showingWorkoutSheet = true
-                                        }
-                                }
+        Group {
+            if workouts.isEmpty {
+                EmptyHistoryView()
+            } else {
+                VStack(spacing: 0) {
+                    // Summary stats (fixed at top)
+                    WorkoutStatsCard(workouts: workouts)
+                        .padding(.horizontal)
+                        .padding(.top)
+                    
+                    // Workout list (scrollable)
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(Array(workouts.enumerated()), id: \.element.id) { index, workout in
+                                WorkoutCard(workout: workout, isLastWorkout: index == 0)
+                                    .onTapGesture {
+                                        selectedWorkout = workout
+                                    }
                             }
-                            .padding(.vertical)
                         }
+                        .padding(.vertical)
                     }
                 }
             }
-            .navigationTitle("Workout History")
-            .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $showingWorkoutSheet) {
-                if let workout = selectedWorkout {
-                    NavigationView {
-                        WorkoutSummaryView(workout: workout, showDeleteButton: true) {
-                            showingWorkoutSheet = false
-                            selectedWorkout = nil
-                        }
-                    }
+        }
+        .navigationTitle("Workout History")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $selectedWorkout) { workout in
+            NavigationView {
+                WorkoutSummaryView(workout: workout, showDeleteButton: true) {
+                    selectedWorkout = nil
                 }
             }
+        }
 //            .toolbar {
 //                ToolbarItem(placement: .navigationBarLeading) {
 //                    Button("Done") {
@@ -72,7 +66,6 @@ struct WorkoutHistoryView: View {
 ////                    }
 ////                }
 //            }
-        }
     }
     
     private func clearAllWorkouts() {
@@ -157,12 +150,15 @@ struct WorkoutStatsCard: View {
                         value: "\(totalReps)",
                         color: .green
                     )
-                    
+#if DEBUG
+                if FeatureFlags.hideFeature {
                     StatItem(
                         title: "Workouts/Week",
                         value: String(format: "%.1f", averageWorkoutsPerWeek),
                         color: .orange
                     )
+                }
+                #endif
                     StatItem(
                         title: "Weeks",
                         value: "\(totalWeeks)",

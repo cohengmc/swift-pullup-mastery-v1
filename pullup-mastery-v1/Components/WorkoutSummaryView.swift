@@ -70,15 +70,20 @@ struct WorkoutSummaryView: View {
                 // Actions
                     HStack(spacing: 8) {
                         
-                        Button(action: shareWorkoutResults) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.headline)
-                                .fontWeight(.heavy)
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(.blue)
-                                .clipShape(Circle())
+#if DEBUG
+                        if FeatureFlags.hideFeature {
+                            
+                            Button(action: shareWorkoutResults) {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.headline)
+                                    .fontWeight(.heavy)
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(.blue)
+                                    .clipShape(Circle())
+                            }
                         }
+                        #endif
                         
                         Button(action: {
                             // Dismiss this view first (pops back to WorkoutView)

@@ -12,16 +12,18 @@ struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @State private var showingManualEntry = false
+    @State private var selectedWorkout: Workout?
     
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
                     // Header
-                    VStack(spacing: 8) {
-                        Image(systemName: "figure.strengthtraining.functional")
-                            .font(.system(size: 60))
-                            .foregroundColor(.blue)
+                    HStack(spacing: 8) {
+                        Image("PullUpIcon")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 60, height: 60)
                         
                         Text("Pull Up Mastery")
                             .font(.largeTitle)
@@ -33,6 +35,9 @@ struct HomeView: View {
                     if let lastWorkout = workouts.first {
                         SimpleStatsCard(workouts: workouts)
                         WorkoutCard(workout: lastWorkout, isLastWorkout: true)
+                            .onTapGesture {
+                                selectedWorkout = lastWorkout
+                            }
                     }
                     
                     // Workout type selection
@@ -74,6 +79,13 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showingManualEntry) {
             ManualWorkoutEntryView()
+        }
+        .sheet(item: $selectedWorkout) { workout in
+            NavigationView {
+                WorkoutSummaryView(workout: workout, showDeleteButton: true) {
+                    selectedWorkout = nil
+                }
+            }
         }
     }
 }

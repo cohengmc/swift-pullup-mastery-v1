@@ -30,12 +30,23 @@ struct RepBreakdownChart: View {
         let formattedString = date.formattedWithOrdinalDay()
 
         // Main container (VStack replaces flex-direction: column)
-        VStack(alignment: .center, spacing: 16) {
+        VStack(alignment: .center, spacing: 10) {
             
-            
+            // Context
+            HStack(){
+                Text("Pull Up Mastery")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.gray)
+                
+                Spacer()
+                
+                Text(formattedString)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.gray)
+            }
             
             // Title and Total Reps Row (HStack replaces flex-direction: row)
-            HStack(alignment: .top) {
+            HStack(alignment: .center) {
                 
                 // Left Column (Title and Breakdown)
                 VStack(alignment: .leading) {
@@ -109,18 +120,7 @@ struct RepBreakdownChart: View {
             }
             .frame(height: 120)  // Fixed height for the chart container
             
-            // Context
-            HStack(){
-                Text("Pull Up Mastery")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.gray)
-                
-                Spacer()
-                
-                Text(formattedString)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.gray)
-            }
+
 
         }
         .padding(20)

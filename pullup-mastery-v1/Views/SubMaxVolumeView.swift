@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct SubMaxVolumeView: View {
     let workout: Workout?
@@ -62,6 +63,7 @@ struct SubMaxVolumeView: View {
                             }
                         }
                         .padding(.horizontal, 50)
+                        .padding(.top, 40) // Add spacing between SetProgressView and timer
                         
                         // Bottom section: number wheel (left) + rest text (right)
                         HStack(alignment: .center, spacing: 24) {
@@ -93,9 +95,10 @@ struct SubMaxVolumeView: View {
                                 }
                                 
                                 Text("or form breakdown")
-                                    .font(.system(size: 40, weight: .ultraLight))
+                                    .font(.system(size: 38, weight: .ultraLight))
                                     .fontWeight(.medium)
                                     .foregroundColor(.secondary)
+                                   
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -183,6 +186,14 @@ struct SubMaxVolumeView: View {
         .animation(.easeInOut(duration: 0.3), value: showNumberWheel)
         .animation(.easeInOut(duration: 0.3), value: showSetCompleteButton)
         .animation(.easeInOut(duration: 0.3), value: currentSet)
+        .onAppear {
+            // Keep screen awake during entire workout
+            UIApplication.shared.isIdleTimerDisabled = true
+        }
+        .onDisappear {
+            // Re-enable screen sleep when view disappears
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
     }
     
     // --- UPDATED FUNCTION ---

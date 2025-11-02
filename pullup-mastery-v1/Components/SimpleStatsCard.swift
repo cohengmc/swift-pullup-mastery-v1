@@ -89,11 +89,15 @@ struct SimpleStatsCard: View {
                         color: .green
                     )
                     
+#if DEBUG
+                if FeatureFlags.hideFeature {
                     StatItem(
                         title: "Workouts/Week",
                         value: String(format: "%.1f", averageWorkoutsPerWeek),
                         color: .orange
                     )
+                }
+                #endif
                     StatItem(
                         title: "Weeks",
                         value: "\(totalWeeks)",

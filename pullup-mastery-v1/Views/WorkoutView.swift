@@ -86,15 +86,13 @@ struct WorkoutView: View {
                 createNewWorkout()
             }
         }
-        .confirmationDialog("Do you want to exit workout?", isPresented: $showingExitAlert, titleVisibility: .visible) {
-            Button("Yes, exit workout", role: .destructive) {
+        .alert("Exit Workout", isPresented: $showingExitAlert) {
+            Button("Stay", role: .cancel) { }
+            Button("Exit Workout", role: .destructive) {
                 exitWorkout()
             }
-            Button("No, finish workout", role: .cancel) {
-                // Stay on workout view - do nothing
-            }
         } message: {
-            Text("Workout data will be lost")
+            Text("Are you sure you want to exit this workout? Data from this workout  will be lost.")
         }
     }
     

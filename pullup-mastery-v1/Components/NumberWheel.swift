@@ -20,7 +20,7 @@ struct NumberWheel: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            Text("Reps")
+            Text("Reps Done")
                 .font(.headline)
                 .foregroundColor(.secondary)
             

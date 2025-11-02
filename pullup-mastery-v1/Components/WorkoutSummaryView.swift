@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import UIKit
 
 struct WorkoutSummaryView: View {
     let workout: Workout
@@ -24,6 +23,18 @@ struct WorkoutSummaryView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
+    @State private var isShowingShareSheet = false
+    @State private var itemToShare: ImageShareItem?
+    
+    // Chart view for rendering
+    private var chartView: RepBreakdownChart {
+        RepBreakdownChart(
+            title: workout.type.rawValue,
+            data: workout.sets,
+            totalReps: workout.totalReps,
+            date: workout.date
+        )
+    }
     
     var body: some View {
             VStack(alignment: .center, spacing: 4) {
@@ -112,6 +123,14 @@ struct WorkoutSummaryView: View {
             .sheet(isPresented: $showingEditSheet) {
                 EditWorkoutView(workout: workout)
             }
+            .sheet(isPresented: $isShowingShareSheet) {
+                if let itemToShare = itemToShare {
+                    ShareSheet(activityItems: [itemToShare])
+                } else {
+                    // Fallback - should not happen, but handles edge case
+                    EmptyView()
+                }
+            }
             .alert("Delete Workout", isPresented: $showingDeleteAlert) {
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {
@@ -137,70 +156,15 @@ struct WorkoutSummaryView: View {
     }
     
     private func shareWorkoutResults() {
-        // Create the chart view
-        let chartView = RepBreakdownChart(
-            title: workout.type.rawValue,
-            data: workout.sets,
-            totalReps: workout.totalReps,
-            date: workout.date
-        )
-        
-        // Render the chart to an image
-        if let image = renderChartToImage(chartView) {
-            // Present the share sheet
-            presentShareSheet(with: image)
+        // Render the chart as an image with appropriate size
+        // Chart has minWidth: 280, minHeight: 200, so use a size that accommodates content
+        let chartSize = CGSize(width: 400, height: 500)
+        if let image = renderViewAsImage(view: chartView, size: chartSize) {
+            // Create the share item with a descriptive title
+            let title = "\(workout.type.rawValue) - \(workout.date.formatted(date: .abbreviated, time: .omitted))"
+            self.itemToShare = ImageShareItem(image: image, title: title)
+            self.isShowingShareSheet = true
         }
-    }
-    
-    private func renderChartToImage(_ view: RepBreakdownChart) -> UIImage? {
-        let hostingController = UIHostingController(rootView: view)
-        
-        // Set a reasonable size for the image (adjust as needed)
-        let targetSize = CGSize(width: 800, height: 600)
-        hostingController.view.frame = CGRect(origin: .zero, size: targetSize)
-        hostingController.view.backgroundColor = .systemBackground
-        
-        // Ensure proper layout
-        hostingController.view.setNeedsLayout()
-        hostingController.view.layoutIfNeeded()
-        
-        // Render to image using snapshot - drawHierarchy captures SwiftUI views properly
-        let renderer = UIGraphicsImageRenderer(size: targetSize)
-        let image = renderer.image { _ in
-            hostingController.view.drawHierarchy(in: CGRect(origin: .zero, size: targetSize), afterScreenUpdates: true)
-        }
-        
-        return image
-    }
-    
-    private func presentShareSheet(with image: UIImage) {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let rootViewController = windowScene.windows.first?.rootViewController else {
-            return
-        }
-        
-        // Find the topmost view controller
-        var topViewController = rootViewController
-        while let presented = topViewController.presentedViewController {
-            topViewController = presented
-        }
-        
-        // Create and present the activity view controller
-        let activityViewController = UIActivityViewController(
-            activityItems: [image],
-            applicationActivities: nil
-        )
-        
-        // Configure for iPad (popover)
-        if let popover = activityViewController.popoverPresentationController {
-            popover.sourceView = topViewController.view
-            popover.sourceRect = CGRect(x: topViewController.view.bounds.midX,
-                                       y: topViewController.view.bounds.midY,
-                                       width: 0, height: 0)
-            popover.permittedArrowDirections = []
-        }
-        
-        topViewController.present(activityViewController, animated: true)
     }
 }
 

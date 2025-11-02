@@ -66,7 +66,7 @@ struct MaxDayView: View {
                         HStack(alignment: .center, spacing: 24) {
                             // Left side: Number wheel (compact)
                             if showNumberWheel {
-                                NumberWheel(selectedValue: $liveSelectedReps, minValue: 0, maxValue: maxRepsForCurrentSet())
+                                NumberWheel(selectedValue: $liveSelectedReps, minValue: 1, maxValue: maxRepsForCurrentSet())
                                     .transition(.opacity.combined(with: .scale))
                                     .frame(maxWidth: 140) // Constrain width for better balance
                             }
@@ -184,7 +184,7 @@ struct MaxDayView: View {
         // Determine the starting reps for the number wheel
         let startingReps: Int
         if currentSet == 1 {
-            startingReps = 0
+            startingReps = 1
         } else {
             startingReps = maxRepsForCurrentSet() // Requirement: Start at max of previous set
         }

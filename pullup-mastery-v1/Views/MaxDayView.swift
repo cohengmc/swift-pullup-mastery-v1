@@ -172,6 +172,7 @@ struct MaxDayView: View {
                 // We just show an empty view while the parent view (e.g., a
                 // NavigationStack) handles dismissing this view.
                 EmptyView()
+                    .allowsHitTesting(false)
             }
             
             Spacer()
@@ -230,6 +231,9 @@ struct MaxDayView: View {
     }
     
     private func completeFinalSet() {
+        // Reset idle timer immediately when workout completes
+        UIApplication.shared.isIdleTimerDisabled = false
+        
         // Save the final set and complete the workout
         saveCurrentSet()
         

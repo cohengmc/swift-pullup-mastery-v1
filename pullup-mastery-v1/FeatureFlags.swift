@@ -12,6 +12,6 @@ import Foundation
 struct FeatureFlags {
     /// Enable "Skip Rest" buttons for testing/debugging
     /// Set to `true` when ready to enable, `false` to disable
-    static let hideFeature: Bool = true
+    static let hideFeature: Bool = false
 }
 

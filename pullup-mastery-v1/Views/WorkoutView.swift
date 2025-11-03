@@ -35,9 +35,11 @@ struct WorkoutView: View {
                 
                 // Show summary view when workout is complete
                 WorkoutSummaryView(workout: workout, showDeleteButton: false) {
-                    // Pop all the way back to HomeView
-                    // First dismiss() pops WorkoutSummaryView back to WorkoutView
-                    // Then onDismiss (this closure) dismisses WorkoutView back to HomeView
+                    // Post notification before dismissing so HomeView can reset navigation
+                    NotificationCenter.default.post(name: NSNotification.Name("WorkoutCompleted"), object: nil)
+                    // Clear workout state and dismiss
+                    currentWorkout = nil
+                    showingCompletionView = false
                     dismiss()
                 }
             } else {
@@ -82,8 +84,27 @@ struct WorkoutView: View {
             }
         }
         .onAppear {
-            if currentWorkout == nil {
+            // Only create a new workout if we don't have one and we're not showing completion
+            if currentWorkout == nil && !showingCompletionView {
                 createNewWorkout()
+            }
+        }
+        .onDisappear {
+            // Only reset if we're not in completion view (i.e., user is exiting early)
+            // If we're showing completion, we want to keep the state until user dismisses
+            if !showingCompletionView {
+                // User is exiting early - clean up
+                if let workout = currentWorkout, workout.sets.isEmpty {
+                    // Delete empty workout if user exits before completing
+                    modelContext.delete(workout)
+                    do {
+                        try modelContext.save()
+                    } catch {
+                        print("Error deleting workout: \(error)")
+                    }
+                }
+                currentWorkout = nil
+                showingCompletionView = false
             }
         }
         .alert("Exit Workout", isPresented: $showingExitAlert) {
@@ -105,7 +126,10 @@ struct WorkoutView: View {
     private func handleWorkoutComplete(_ workout: Workout) {
         do {
             try modelContext.save()
-            showingCompletionView = true
+            // Show completion view - notification will be posted when user dismisses
+            withAnimation {
+                showingCompletionView = true
+            }
         } catch {
             print("Error saving completed workout: \(error)")
         }

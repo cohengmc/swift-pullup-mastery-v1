@@ -86,13 +86,8 @@ struct WorkoutSummaryView: View {
                         #endif
                         
                         Button(action: {
-                            // Dismiss this view first (pops back to WorkoutView)
-                            dismiss()
-                            // Then call onDismiss to dismiss WorkoutView and return to HomeView
-                            // Use async to ensure the first dismiss completes before the second
-                            DispatchQueue.main.async {
-                                onDismiss()
-                            }
+                            // Call onDismiss to dismiss WorkoutView, which will also dismiss this view
+                            onDismiss()
                         }) {
                             Text("Done")
                                 .font(.headline)

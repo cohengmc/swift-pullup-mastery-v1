@@ -13,6 +13,7 @@ struct HomeView: View {
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     @State private var showingManualEntry = false
     @State private var selectedWorkout: Workout?
+    @State private var navigationResetId = UUID()
     
     var body: some View {
         NavigationView {
@@ -77,6 +78,7 @@ struct HomeView: View {
                 }
             }
         }
+        .id(navigationResetId) // Reset NavigationView when needed
         .sheet(isPresented: $showingManualEntry) {
             ManualWorkoutEntryView()
         }
@@ -85,6 +87,13 @@ struct HomeView: View {
                 WorkoutSummaryView(workout: workout, showDeleteButton: true) {
                     selectedWorkout = nil
                 }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("WorkoutCompleted"))) { _ in
+            // Reset navigation state after user dismisses workout summary
+            // Small delay to ensure WorkoutView is fully dismissed
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                navigationResetId = UUID()
             }
         }
     }

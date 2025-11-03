@@ -160,14 +160,11 @@ struct LadderVolumeView: View {
                 }
             } else {
                 // Workout complete
-                LadderCompleteCard(
-                    completedLadders: completedLadders,
-                    onFinish: {
-                        if let workout = workout {
-                            onWorkoutComplete(workout)
-                        }
-                    }
-                )
+                // The onWorkoutComplete closure was called by completeLadder().
+                // We just show an empty view while the parent view (e.g., a
+                // NavigationStack) handles dismissing this view.
+                EmptyView()
+                    .allowsHitTesting(false)
             }
             
             Spacer()
@@ -188,11 +185,6 @@ struct LadderVolumeView: View {
     private func completeCurrentRep() {
         // Record the completed rep
         currentLadderReps.append(currentRepInLadder)
-        
-        // Save individual rep to workout
-        if let workout = workout {
-            workout.sets.append(1)
-        }
         
         HapticManager.shared.success()
         
@@ -231,6 +223,11 @@ struct LadderVolumeView: View {
         let maxReps = currentLadderReps.count
         completedLadders.append(maxReps)
         
+        // Save to workout.sets - this represents one complete ladder set
+        if let workout = workout {
+            workout.sets.append(maxReps)
+        }
+        
         // Mark set as confirmed and advance display ladder
         withAnimation {
             isCurrentSetConfirmed = true
@@ -249,9 +246,14 @@ struct LadderVolumeView: View {
         // User reverts the set confirmation
         HapticManager.shared.error()
         
-        // Remove the last saved set
+        // Remove the last saved set from both arrays
         if !completedLadders.isEmpty {
             completedLadders.removeLast()
+        }
+        
+        // Remove from workout.sets as well
+        if let workout = workout, !workout.sets.isEmpty {
+            workout.sets.removeLast()
         }
         
         // Revert confirmation state and display ladder
@@ -277,12 +279,20 @@ struct LadderVolumeView: View {
                 isCurrentSetConfirmed = false
             }
         } else {
-            // All ladders complete
+            // All ladders complete - reset idle timer immediately
+            UIApplication.shared.isIdleTimerDisabled = false
+            
             withAnimation {
                 currentLadder += 1
                 displayLadder = currentLadder
                 isCurrentSetConfirmed = false
                 manuallyCompleted = false
+            }
+            
+            // Call the completion handler. The caller (WorkoutView) is responsible
+            // for displaying the WorkoutSummaryView.
+            if let workout = workout {
+                onWorkoutComplete(workout)
             }
         }
     }
@@ -398,108 +408,6 @@ struct LadderVisualization: View {
     }
 }
 
-struct LadderCompleteCard: View {
-    let completedLadders: [Int]
-    let onFinish: () -> Void
-    
-    private var totalReps: Int {
-        completedLadders.reduce(0) { total, maxRep in
-            // For each ladder, sum 1+2+3+...+maxRep
-            total + (1...maxRep).reduce(0, +)
-        }
-    }
-    
-    private var averageMaxRep: Double {
-        guard !completedLadders.isEmpty else { return 0 }
-        return Double(completedLadders.reduce(0, +)) / Double(completedLadders.count)
-    }
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.green)
-            
-            Text("Ladder Volume Complete!")
-                .font(.title)
-                .fontWeight(.bold)
-            
-            VStack(spacing: 12) {
-                Text("Performance Summary")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
-                HStack(spacing: 16) {
-                    VStack {
-                        Text("\(completedLadders.count)")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.green)
-                        Text("Ladders")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    VStack {
-                        Text("\(totalReps)")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.blue)
-                        Text("Total Reps")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    VStack {
-                        Text(String(format: "%.1f", averageMaxRep))
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.orange)
-                        Text("Avg Max")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                // Ladder breakdown
-                if !completedLadders.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Ladder Max Reps:")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
-                        
-                        HStack {
-                            ForEach(0..<completedLadders.count, id: \.self) { index in
-                                Text("\(completedLadders[index])")
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(.green.opacity(0.2))
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                }
-            }
-            
-            Button(action: onFinish) {
-                HStack {
-                    Image(systemName: "trophy.fill")
-                    Text("Finish Workout")
-                }
-                .font(.headline)
-                .foregroundColor(.white)
-                .padding()
-                .background(.green)
-                .clipShape(Capsule())
-            }
-        }
-        .padding()
-        .background(.green.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-    }
-}
 
 #Preview {
     let workout = Workout(type: .ladderVolume)
@@ -511,3 +419,9 @@ struct LadderCompleteCard: View {
     }
     .modelContainer(for: [Workout.self], inMemory: true)
 }
+
+
+
+
+
+

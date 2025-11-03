@@ -170,14 +170,11 @@ struct SubMaxVolumeView: View {
                 }
             } else {
                 // Workout complete
-                SubMaxCompleteCard(
-                    completedSets: completedSets,
-                    onFinish: {
-                        if let workout = workout {
-                            onWorkoutComplete(workout)
-                        }
-                    }
-                )
+                // The onWorkoutComplete closure was called by completeFinalSet().
+                // We just show an empty view while the parent view (e.g., a
+                // NavigationStack) handles dismissing this view.
+                EmptyView()
+                    .allowsHitTesting(false)
             }
             
             Spacer()
@@ -236,14 +233,23 @@ struct SubMaxVolumeView: View {
     }
     
     private func completeFinalSet() {
+        // Reset idle timer immediately when workout completes
+        UIApplication.shared.isIdleTimerDisabled = false
+        
         // Save the final set and complete the workout
         saveCurrentSet()
         
         HapticManager.shared.success()
         
         withAnimation {
-            currentSet += 1 // This will trigger the SubMaxCompleteCard
+            currentSet += 1 // This will trigger the workout complete view
             showNumberWheel = false
+        }
+        
+        // Call the completion handler. The caller (WorkoutView) is responsible
+        // for displaying the WorkoutSummaryView.
+        if let workout = workout {
+            onWorkoutComplete(workout)
         }
     }
     
@@ -261,87 +267,6 @@ struct SubMaxVolumeView: View {
     }
 }
 
-// MARK: - Completion Card
-struct SubMaxCompleteCard: View {
-    let completedSets: [Int]
-    let onFinish: () -> Void
-    
-    private var totalReps: Int {
-        completedSets.reduce(0, +)
-    }
-    
-    private var averageReps: Double {
-        guard !completedSets.isEmpty else { return 0 }
-        return Double(totalReps) / Double(completedSets.count)
-    }
-    
-    var body: some View {
-        VStack(spacing: 30) {
-            VStack(spacing: 16) {
-                Image(systemName: "trophy.fill")
-                    .font(.system(size: 80))
-                    .foregroundColor(.yellow)
-                
-                Text("Workout Complete!")
-                    .font(.system(size: 48, weight: .thin))
-                    .foregroundColor(.green)
-                
-                // Stats
-                VStack(spacing: 12) {
-                    HStack(spacing: 24) {
-                        VStack {
-                            Text("\(completedSets.count)")
-                                .font(.title)
-                                .fontWeight(.bold)
-                                .foregroundColor(.blue)
-                            Text("Sets")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        VStack {
-                            Text("\(totalReps)")
-                                .font(.title)
-                                .fontWeight(.bold)
-                                .foregroundColor(.green)
-                            Text("Total Reps")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        VStack {
-                            Text(String(format: "%.1f", averageReps))
-                                .font(.title)
-                                .fontWeight(.bold)
-                                .foregroundColor(.orange)
-                            Text("Avg Reps")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                
-                Text("Excellent work on your volume training!")
-                    .font(.title3)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 8)
-            }
-            
-            Button(action: onFinish) {
-                Text("Finish Workout")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 12)
-                    .background(.green)
-                    .clipShape(Capsule())
-            }
-        }
-        .padding(.vertical, 40)
-    }
-}
 
 #Preview {
     let workout = Workout(type: .subMaxVolume)

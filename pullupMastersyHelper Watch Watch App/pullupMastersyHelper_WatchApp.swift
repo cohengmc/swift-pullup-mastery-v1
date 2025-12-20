@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct pullupMastersyHelper_Watch_Watch_AppApp: App {
@@ -13,5 +14,6 @@ struct pullupMastersyHelper_Watch_Watch_AppApp: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(SharedModelContainerWatch.create())
     }
 }

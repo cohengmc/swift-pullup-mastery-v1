@@ -1,0 +1,223 @@
+//
+//  CountdownTimerWatchView.swift
+//  pullupMastersyHelper Watch Watch App
+//
+//  Created by Geoffrey Cohen on 12/19/25.
+//
+
+import SwiftUI
+import Combine
+
+struct CountdownTimerWatchView: View {
+    @StateObject private var timerManager = CountdownTimerManagerWatch()
+    let initialTime: Int
+    let onTimerComplete: () -> Void
+    
+    @State private var timerID: UUID = UUID()
+    
+    init(initialTime: Int, onTimerComplete: @escaping () -> Void = {}) {
+        self.initialTime = initialTime
+        self.onTimerComplete = onTimerComplete
+    }
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                // Background circle
+                Circle()
+                    .stroke(Color.gray.opacity(0.3), lineWidth: 8)
+                    .frame(width: 120, height: 120)
+                
+                // Progress circle
+                Circle()
+                    .trim(from: 0, to: timerManager.progress)
+                    .stroke(Color.blue, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .frame(width: 120, height: 120)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 0.1), value: timerManager.progress)
+                
+                // Time display
+                VStack(spacing: 2) {
+                    Text(timerManager.timeString)
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                    
+                    if timerManager.timeRemaining > 0 {
+                        Text("Rest")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Done!")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                            .fontWeight(.semibold)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            timerManager.startTimer(duration: initialTime, timerID: timerID)
+        }
+        .onReceive(timerManager.$timeRemaining) { time in
+            if time == 0 && timerManager.hasStarted {
+                onTimerComplete()
+                HapticManagerWatch.shared.success()
+            }
+        }
+        .onDisappear {
+            timerManager.cleanup(timerID: timerID)
+        }
+    }
+}
+
+class CountdownTimerManagerWatch: ObservableObject {
+    @Published var timeRemaining: Int = 0
+    @Published var progress: Double = 0.0
+    @Published var hasStarted: Bool = false
+    
+    private var timer: AnyCancellable?
+    private var totalTime: Int = 0
+    private var exactTimeRemaining: Double = 0.0
+    private var timerEndTime: Date?
+    private var currentTimerID: UUID?
+    
+    var timeString: String {
+        let minutes = timeRemaining / 60
+        let seconds = timeRemaining % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+    
+    func startTimer(duration: Int, timerID: UUID) {
+        totalTime = duration
+        exactTimeRemaining = Double(duration)
+        timeRemaining = duration
+        hasStarted = true
+        currentTimerID = timerID
+        timerEndTime = Date().addingTimeInterval(exactTimeRemaining)
+        
+        saveTimerState(timerID: timerID)
+        updateProgress()
+        
+        timer = Timer.publish(every: 0.1, on: .main, in: .common)
+            .autoconnect()
+            .sink { _ in
+                self.updateTimer()
+            }
+    }
+    
+    private func updateTimer() {
+        if let endTime = timerEndTime {
+            let now = Date()
+            let remaining = endTime.timeIntervalSince(now)
+            
+            if remaining > 0 {
+                exactTimeRemaining = remaining
+                let newTimeRemaining = Int(ceil(exactTimeRemaining))
+                
+                if newTimeRemaining != timeRemaining {
+                    timeRemaining = newTimeRemaining
+                }
+                
+                updateProgress()
+                saveTimerState(timerID: currentTimerID)
+            } else {
+                exactTimeRemaining = 0
+                timeRemaining = 0
+                stopTimer()
+            }
+        } else {
+            if exactTimeRemaining > 0 {
+                exactTimeRemaining -= 0.1
+                let newTimeRemaining = Int(ceil(exactTimeRemaining))
+                
+                if newTimeRemaining != timeRemaining {
+                    timeRemaining = newTimeRemaining
+                }
+                
+                updateProgress()
+            } else {
+                exactTimeRemaining = 0
+                timeRemaining = 0
+                stopTimer()
+            }
+        }
+    }
+    
+    func stopTimer() {
+        hasStarted = false
+        timer?.cancel()
+        timer = nil
+        
+        if let timerID = currentTimerID {
+            clearTimerState(timerID: timerID)
+        }
+        
+        timerEndTime = nil
+        currentTimerID = nil
+    }
+    
+    func cleanup(timerID: UUID) {
+        if currentTimerID == timerID {
+            stopTimer()
+        }
+    }
+    
+    private func saveTimerState(timerID: UUID?) {
+        guard let timerID = timerID, let endTime = timerEndTime else { return }
+        
+        let key = "timer_\(timerID.uuidString)"
+        UserDefaults.standard.set(endTime.timeIntervalSince1970, forKey: key)
+        UserDefaults.standard.set(totalTime, forKey: "\(key)_total")
+    }
+    
+    private func restoreTimerFromBackground() {
+        guard let timerID = currentTimerID, hasStarted else { return }
+        
+        let key = "timer_\(timerID.uuidString)"
+        guard let endTimeInterval = UserDefaults.standard.object(forKey: key) as? TimeInterval else { return }
+        
+        if let savedTotalTime = UserDefaults.standard.object(forKey: "\(key)_total") as? Int {
+            totalTime = savedTotalTime
+        }
+        
+        let savedEndTime = Date(timeIntervalSince1970: endTimeInterval)
+        let now = Date()
+        let remaining = savedEndTime.timeIntervalSince(now)
+        
+        if remaining > 0 {
+            timerEndTime = savedEndTime
+            exactTimeRemaining = remaining
+            timeRemaining = Int(ceil(exactTimeRemaining))
+            updateProgress()
+        } else {
+            exactTimeRemaining = 0
+            timeRemaining = 0
+            updateProgress()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.stopTimer()
+            }
+        }
+    }
+    
+    private func clearTimerState(timerID: UUID) {
+        let key = "timer_\(timerID.uuidString)"
+        UserDefaults.standard.removeObject(forKey: key)
+        UserDefaults.standard.removeObject(forKey: "\(key)_total")
+    }
+    
+    private func updateProgress() {
+        if totalTime > 0 {
+            progress = exactTimeRemaining / Double(totalTime)
+        } else {
+            progress = 0.0
+        }
+    }
+}
+
+#Preview {
+    CountdownTimerWatchView(initialTime: 60) {
+        print("Timer completed!")
+    }
+    .padding()
+}
+

@@ -1,0 +1,194 @@
+//
+//  MaxDayWatchView.swift
+//  pullupMastersyHelper Watch Watch App
+//
+//  Created by Geoffrey Cohen on 12/19/25.
+//
+
+import SwiftUI
+
+struct MaxDayWatchView: View {
+    let workout: Workout?
+    let onWorkoutComplete: (Workout) -> Void
+    
+    @State private var currentSet = 1
+    @State private var completedSets: [Int] = []
+    @State private var isResting = false
+    @State private var showNumberWheel = false
+    @State private var liveSelectedReps = 0
+    @State private var showSetCompleteButton = true
+    
+    private let totalSets = 3
+    private let restTime = 300 // 5 minutes
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            // Set progress at top
+            SetProgressWatchView(
+                totalSets: totalSets,
+                completedSets: completedSets,
+                currentReps: isResting ? (showNumberWheel ? liveSelectedReps : nil) : nil
+            )
+            .padding(.top, 8)
+            
+            Spacer()
+            
+            if currentSet <= totalSets {
+                if isResting {
+                    // Rest phase
+                    VStack(spacing: 12) {
+                        // Timer
+                        CountdownTimerWatchView(initialTime: restTime) {
+                            if liveSelectedReps > 0 {
+                                saveCurrentSet()
+                                withAnimation {
+                                    isResting = false
+                                    showNumberWheel = false
+                                    showSetCompleteButton = true
+                                    currentSet += 1
+                                    liveSelectedReps = 0
+                                }
+                            } else {
+                                HapticManagerWatch.shared.error()
+                            }
+                        }
+                        
+                        // Number wheel for rep input
+                        if showNumberWheel {
+                            VStack(spacing: 4) {
+                                Text("Next: \(liveSelectedReps > 0 ? "\(liveSelectedReps) Reps" : "Max")")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                NumberWheelWatch(
+                                    selectedValue: $liveSelectedReps,
+                                    minValue: 1,
+                                    maxValue: maxRepsForCurrentSet()
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // Active set phase
+                    VStack(spacing: 16) {
+                        if currentSet == 1 {
+                            Text("Max Reps")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            Text("until form breakdown")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("\(maxRepsForCurrentSet()) Reps")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            Text("or form breakdown")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        if showSetCompleteButton {
+                            Button(action: completeCurrentSet) {
+                                Text("Set Complete")
+                                    .font(.headline)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        
+                        // Number wheel only shown after "Set Complete" is clicked
+                        if showNumberWheel && !showSetCompleteButton {
+                            VStack(spacing: 8) {
+                                NumberWheelWatch(
+                                    selectedValue: $liveSelectedReps,
+                                    minValue: 0,
+                                    maxValue: maxRepsForCurrentSet()
+                                )
+                                
+                                // For final set, show completion button when reps are selected
+                                if currentSet == totalSets && liveSelectedReps > 0 {
+                                    Button(action: completeFinalSet) {
+                                        Text("Complete Workout")
+                                            .font(.headline)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.green)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Spacer()
+        }
+        .animation(.easeInOut(duration: 0.3), value: isResting)
+        .animation(.easeInOut(duration: 0.3), value: showNumberWheel)
+        .animation(.easeInOut(duration: 0.3), value: showSetCompleteButton)
+        .animation(.easeInOut(duration: 0.3), value: currentSet)
+    }
+    
+    private func completeCurrentSet() {
+        let startingReps: Int
+        if currentSet == 1 {
+            startingReps = 1
+        } else {
+            startingReps = maxRepsForCurrentSet()
+        }
+        
+        withAnimation {
+            showSetCompleteButton = false
+            showNumberWheel = true
+            liveSelectedReps = startingReps
+        }
+        
+        HapticManagerWatch.shared.success()
+        
+        if currentSet < totalSets {
+            withAnimation {
+                isResting = true
+            }
+        }
+    }
+    
+    private func saveCurrentSet() {
+        guard let workout = workout else { return }
+        workout.sets.append(liveSelectedReps)
+        completedSets.append(liveSelectedReps)
+    }
+    
+    private func completeFinalSet() {
+        saveCurrentSet()
+        HapticManagerWatch.shared.success()
+        
+        withAnimation {
+            currentSet += 1
+            showNumberWheel = false
+        }
+        
+        if let workout = workout {
+            onWorkoutComplete(workout)
+        }
+    }
+    
+    private func maxRepsForCurrentSet() -> Int {
+        if currentSet == 1 {
+            return 20
+        } else {
+            let previousSetIndex = currentSet - 2
+            if previousSetIndex >= 0 && previousSetIndex < completedSets.count {
+                return max(completedSets[previousSetIndex], 1)
+            }
+            return 20
+        }
+    }
+}
+
+#Preview {
+    let workout = Workout(type: .maxDay)
+    
+    return MaxDayWatchView(workout: workout) { _ in
+        print("Workout complete!")
+    }
+    .padding()
+}
+

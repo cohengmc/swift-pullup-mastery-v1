@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import WatchKit
 
 struct CountdownTimerWatchView: View {
     @StateObject private var timerManager = CountdownTimerManagerWatch()
@@ -15,46 +16,49 @@ struct CountdownTimerWatchView: View {
     
     @State private var timerID: UUID = UUID()
     
+    private let borderStrokeWidth: CGFloat = 8
+    
     init(initialTime: Int, onTimerComplete: @escaping () -> Void = {}) {
         self.initialTime = initialTime
         self.onTimerComplete = onTimerComplete
     }
     
     var body: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                // Background circle
-                Circle()
-                    .stroke(Color.gray.opacity(0.3), lineWidth: 8)
-                    .frame(width: 120, height: 120)
-                
-                // Progress circle
-                Circle()
-                    .trim(from: 0, to: timerManager.progress)
-                    .stroke(Color.blue, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                    .frame(width: 120, height: 120)
-                    .rotationEffect(.degrees(-90))
-                    .animation(.linear(duration: 0.1), value: timerManager.progress)
-                
-                // Time display
-                VStack(spacing: 2) {
-                    Text(timerManager.timeString)
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                    
-                    if timerManager.timeRemaining > 0 {
-                        Text("Rest")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("Done!")
-                            .font(.caption)
-                            .foregroundColor(.green)
-                            .fontWeight(.semibold)
-                    }
-                }
+        let screenBounds = WKInterfaceDevice.current().screenBounds
+        let screenWidth = screenBounds.width
+        let screenHeight = screenBounds.height
+        
+        return VStack(spacing: 0) {
+            Text(timerManager.timeString)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .monospacedDigit()
+            
+            if timerManager.timeRemaining > 0 {
+                Text("Rest")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                Text("Done!")
+                    .font(.caption)
+                    .foregroundColor(.green)
+                    .fontWeight(.semibold)
             }
         }
+        .frame(width: screenWidth, height: screenHeight)
+        .overlay(
+            // Edge border - counter-clockwise progression
+            RoundedRectangle(cornerRadius: screenWidth * 0.25)
+                .inset(by: borderStrokeWidth * 0.5) // Inset by half width so stroke stays on screen
+                .trim(from: 0, to: timerManager.progress)
+                .stroke(
+                    Color.blue,
+                    style: StrokeStyle(lineWidth: borderStrokeWidth, lineCap: .round)
+                )
+                .rotationEffect(.degrees(270))
+                .frame(width: screenHeight, height: screenWidth)
+                .animation(.linear(duration: 0.1), value: timerManager.progress)
+        )
+        .ignoresSafeArea()
         .onAppear {
             timerManager.startTimer(duration: initialTime, timerID: timerID)
         }

@@ -37,6 +37,22 @@ struct MaxDayWatchView: View {
                 if isResting {
                     // Rest phase
                     VStack(spacing: 12) {
+                        
+                        // Number wheel for rep input
+                        if showNumberWheel {
+                            VStack(spacing: 4) {
+                                Text("Next: \(liveSelectedReps > 0 ? "\(liveSelectedReps) Reps" : "Max")")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                NumberWheelWatch(
+                                    selectedValue: $liveSelectedReps,
+                                    minValue: 1,
+                                    maxValue: maxRepsForCurrentSet()
+                                )
+                            }
+                        }
+                        
                         // Timer
                         CountdownTimerWatchView(initialTime: restTime) {
                             if liveSelectedReps > 0 {
@@ -53,20 +69,6 @@ struct MaxDayWatchView: View {
                             }
                         }
                         
-                        // Number wheel for rep input
-                        if showNumberWheel {
-                            VStack(spacing: 4) {
-                                Text("Next: \(liveSelectedReps > 0 ? "\(liveSelectedReps) Reps" : "Max")")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                
-                                NumberWheelWatch(
-                                    selectedValue: $liveSelectedReps,
-                                    minValue: 1,
-                                    maxValue: maxRepsForCurrentSet()
-                                )
-                            }
-                        }
                     }
                 } else {
                     // Active set phase

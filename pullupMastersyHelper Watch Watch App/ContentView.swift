@@ -9,6 +9,8 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+    
     var body: some View {
         NavigationStack {
             List {
@@ -19,6 +21,19 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("Workouts")
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("WorkoutDataReceived"))) { notification in
+                print("⌚ [Watch] Received WorkoutDataReceived notification")
+                if let workout = notification.userInfo?["workout"] as? Workout {
+                    print("⌚ [Watch] Saving workout to database: \(workout.id)")
+                    modelContext.insert(workout)
+                    do {
+                        try modelContext.save()
+                        print("✅ [Watch] Workout saved successfully")
+                    } catch {
+                        print("❌ [Watch] Error saving workout: \(error)")
+                    }
+                }
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ import SwiftUI
 struct SetProgressWatchView: View {
     let totalSets: Int
     let completedSets: [Int] // Array of rep counts for completed sets
-    let currentReps: Int? // Reps for current set, nil if not started
+//    let currentReps: Int? // Reps for current set, nil if not started
     
     private var currentSet: Int {
         completedSets.count + 1
@@ -30,20 +30,29 @@ struct SetProgressWatchView: View {
                         .fill(Color.gray.opacity(0.3))
                         .frame(height: 8)
                     
-                    // Progress
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.blue)
-                        .frame(width: geometry.size.width * CGFloat(currentSet - 1) / CGFloat(totalSets), height: 8)
+                    // Progress based on completedSets
+                    if completedSets.isEmpty {
+                        // When no sets completed, show just a circle at the beginning
+                        Circle()
+                            .fill(Color.blue)
+                            .frame(width: 8, height: 8)
+                            .offset(x: 0)
+                    } else {
+                        // When sets are completed, fill bar proportionally
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.blue)
+                            .frame(width: geometry.size.width * CGFloat(completedSets.count) / CGFloat(totalSets), height: 8)
+                    }
                 }
             }
             .frame(height: 8)
             
             // Show current reps if available
-            if let reps = currentReps, reps > 0 {
-                Text("\(reps) reps")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+//            if let reps = currentReps, reps > 0 {
+//                Text("\(reps) reps")
+//                    .font(.caption)
+//                    .foregroundColor(.secondary)
+//            }
         }
         .padding(.horizontal)
     }
@@ -51,16 +60,28 @@ struct SetProgressWatchView: View {
 
 #Preview {
     VStack(spacing: 20) {
+        // No sets completed - shows circle
         SetProgressWatchView(
             totalSets: 3,
-            completedSets: [8],
-            currentReps: 6
+            completedSets: []
         )
         
+        // One set completed
         SetProgressWatchView(
-            totalSets: 10,
-            completedSets: [8, 7, 6],
-            currentReps: 5
+            totalSets: 3,
+            completedSets: [8]
+        )
+        
+        // Two sets completed
+        SetProgressWatchView(
+            totalSets: 3,
+            completedSets: [8, 7]
+        )
+        
+        // All sets completed
+        SetProgressWatchView(
+            totalSets: 3,
+            completedSets: [8, 7, 6]
         )
     }
     .padding()

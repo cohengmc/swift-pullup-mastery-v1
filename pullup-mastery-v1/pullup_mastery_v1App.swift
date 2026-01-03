@@ -10,23 +10,18 @@ import SwiftData
 
 @main
 struct pullup_mastery_v1App: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Workout.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-
+    init() {
+        print("📱 [Phone] App initializing...")
+        // Initialize WatchConnectivity on app launch
+        print("📱 [Phone] Initializing WatchConnectivityManager...")
+        _ = WatchConnectivityManager.shared
+        print("📱 [Phone] WatchConnectivityManager initialized")
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(SharedModelContainer.create())
     }
 }

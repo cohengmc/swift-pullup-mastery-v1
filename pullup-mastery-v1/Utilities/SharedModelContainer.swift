@@ -9,87 +9,101 @@ import Foundation
 import SwiftData
 
 class SharedModelContainer {
+    static let appGroupIdentifier = "group.geoffcohen.pullup-mastery"
+    private static let migrationCompletedKey = "AppGroupToDefaultMigrationCompleted"
+    
     static func create() -> ModelContainer {
         let schema = Schema([
             Workout.self,
         ])
         
-        // Use App Groups container for shared data
-        let appGroupIdentifier = "group.geoffcohen.pullup-mastery"
+        print("📱 [Phone] Creating ModelContainer (using default SwiftData location)")
         
-        // Try to get App Group container
-        let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)
-        let databaseURL = containerURL?.appendingPathComponent("WorkoutData.sqlite")
-        
-        // Check if App Group database exists
-        let appGroupDatabaseExists = databaseURL != nil && FileManager.default.fileExists(atPath: databaseURL!.path)
-        
-        // If App Group database doesn't exist, check default location for migration
-        if !appGroupDatabaseExists {
-            // Try to find data in default SwiftData location
-            if let defaultContainer = try? ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)]) {
-                let context = ModelContext(defaultContainer)
-                let descriptor = FetchDescriptor<Workout>()
-                
-                // Check if there's existing data in default location
-                if let workouts = try? context.fetch(descriptor), !workouts.isEmpty {
-                    // Data exists in old location - migrate it
-                    if let containerURL = containerURL, let databaseURL = databaseURL {
-                        // Create App Group container if it doesn't exist
-                        try? FileManager.default.createDirectory(at: containerURL, withIntermediateDirectories: true)
-                        
-                        // Create new container in App Group location
-                        let newConfiguration = ModelConfiguration(
-                            schema: schema,
-                            url: databaseURL,
-                            allowsSave: true,
-                            cloudKitDatabase: .none
-                        )
-                        
-                        if let newContainer = try? ModelContainer(for: schema, configurations: [newConfiguration]) {
-                            let newContext = ModelContext(newContainer)
-                            
-                            // Copy all workouts to new location
-                            for workout in workouts {
-                                let newWorkout = Workout(type: workout.type, date: workout.date)
-                                newWorkout.id = workout.id
-                                newWorkout.sets = workout.sets
-                                newContext.insert(newWorkout)
-                            }
-                            
-                            // Save migrated data
-                            try? newContext.save()
-                            
-                            // Return the new container with migrated data
-                            return newContainer
-                        }
-                    }
-                }
-            }
+        // Check if migration from App Groups is needed (one-time)
+        let migrationCompleted = UserDefaults.standard.bool(forKey: migrationCompletedKey)
+        if !migrationCompleted {
+            print("📦 [Phone] Checking for App Group data to migrate...")
+            migrateFromAppGroupIfNeeded(schema: schema)
+            UserDefaults.standard.set(true, forKey: migrationCompletedKey)
         }
         
-        // Use App Group location if available, otherwise fallback to default
-        guard let containerURL = containerURL, let databaseURL = databaseURL else {
-            // Fallback to default location if App Groups not available
-            let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-            do {
-                return try ModelContainer(for: schema, configurations: [modelConfiguration])
-            } catch {
-                fatalError("Could not create ModelContainer: \(error)")
+        // Use default SwiftData location (device-specific)
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        
+        do {
+            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            print("✅ [Phone] Created ModelContainer (default location)")
+            return container
+        } catch {
+            print("❌ [Phone] Failed to create ModelContainer: \(error)")
+            if let nsError = error as NSError? {
+                print("❌ [Phone] Error domain: \(nsError.domain), code: \(nsError.code)")
+                print("❌ [Phone] Error userInfo: \(nsError.userInfo)")
             }
+            fatalError("Could not create ModelContainer: \(error)")
+        }
+    }
+    
+    /// One-time migration from App Group location to default SwiftData location
+    private static func migrateFromAppGroupIfNeeded(schema: Schema) {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+            print("📦 [Phone] No App Group container found, skipping migration")
+            return
         }
         
-        let modelConfiguration = ModelConfiguration(
+        let appGroupDatabaseURL = containerURL.appendingPathComponent("WorkoutData.sqlite")
+        
+        guard FileManager.default.fileExists(atPath: appGroupDatabaseURL.path) else {
+            print("📦 [Phone] No App Group database found, skipping migration")
+            return
+        }
+        
+        print("📦 [Phone] Found App Group database, migrating to default location...")
+        
+        // Create default container
+        guard let defaultContainer = try? ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)]) else {
+            print("❌ [Phone] Failed to create default container for migration")
+            return
+        }
+        
+        let defaultContext = ModelContext(defaultContainer)
+        
+        // Try to read from App Group location
+        let appGroupConfiguration = ModelConfiguration(
             schema: schema,
-            url: databaseURL,
-            allowsSave: true,
+            url: appGroupDatabaseURL,
+            allowsSave: false,
             cloudKitDatabase: .none
         )
         
+        guard let appGroupContainer = try? ModelContainer(for: schema, configurations: [appGroupConfiguration]) else {
+            print("❌ [Phone] Failed to open App Group container for migration")
+            return
+        }
+        
+        let appGroupContext = ModelContext(appGroupContainer)
+        let descriptor = FetchDescriptor<Workout>()
+        
+        guard let workouts = try? appGroupContext.fetch(descriptor), !workouts.isEmpty else {
+            print("📦 [Phone] No workouts found in App Group database, skipping migration")
+            return
+        }
+        
+        print("📦 [Phone] Migrating \(workouts.count) workouts from App Group to default location...")
+        
+        // Copy workouts to default location
+        for workout in workouts {
+            let newWorkout = Workout(type: workout.type, date: workout.date)
+            newWorkout.id = workout.id
+            newWorkout.sets = workout.sets
+            defaultContext.insert(newWorkout)
+        }
+        
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            try defaultContext.save()
+            print("✅ [Phone] Successfully migrated \(workouts.count) workouts")
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            print("❌ [Phone] Error saving migrated workouts: \(error)")
         }
     }
 }

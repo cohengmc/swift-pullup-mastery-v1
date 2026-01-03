@@ -10,6 +10,14 @@ import SwiftData
 
 @main
 struct pullupMastersyHelper_Watch_Watch_AppApp: App {
+    init() {
+        print("⌚ [Watch] App initializing...")
+        // Initialize WatchConnectivity on app launch
+        print("⌚ [Watch] Initializing WatchConnectivityManagerWatch...")
+        _ = WatchConnectivityManagerWatch.shared
+        print("⌚ [Watch] WatchConnectivityManagerWatch initialized")
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()

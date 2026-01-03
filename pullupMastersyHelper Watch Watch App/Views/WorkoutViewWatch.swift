@@ -18,22 +18,11 @@ struct WorkoutViewWatch: View {
     
     var body: some View {
         Group {
-            if showingCompletion {
-                // Simple completion view
-                VStack(spacing: 12) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 50))
-                        .foregroundColor(.green)
-                    
-                    Text("Workout Complete!")
-                        .font(.headline)
-                    
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .buttonStyle(.borderedProminent)
+            if showingCompletion, let workout = currentWorkout {
+                // Workout summary view
+                WorkoutSummaryWatchView(workout: workout) {
+                    dismiss()
                 }
-                .padding()
             } else {
                 // Show active workout view
                 Group {
@@ -55,8 +44,6 @@ struct WorkoutViewWatch: View {
                         )
                     }
                 }
-                .navigationTitle(workoutType.rawValue)
-                .navigationBarTitleDisplayMode(.inline)
             }
         }
         .onAppear {
@@ -87,13 +74,41 @@ struct WorkoutViewWatch: View {
     }
     
     private func handleWorkoutComplete(_ workout: Workout) {
+        Task {
+            await handleWorkoutCompleteAsync(workout)
+        }
+    }
+    
+    private func handleWorkoutCompleteAsync(_ workout: Workout) async {
+        print("✅ [Watch] Workout completed: \(workout.type.rawValue)")
+        print("✅ [Watch] Workout ID: \(workout.id)")
+        print("✅ [Watch] Workout date: \(workout.date)")
+        print("✅ [Watch] Total reps: \(workout.totalReps), Sets: \(workout.sets.count)")
+        print("✅ [Watch] Sets array: \(workout.sets)")
+        
         do {
+            // Save workout to local SwiftData database (watch's own database)
             try modelContext.save()
+            print("✅ [Watch] Workout saved to local model context")
+            
+            // Process pending changes to ensure write is complete
+            modelContext.processPendingChanges()
+            print("✅ [Watch] Processed pending changes")
+            
+            // Send workout data to phone via WatchConnectivity
+            print("📤 [Watch] Sending workout data to phone via WatchConnectivity...")
+            print("📤 [Watch] Workout details: ID=\(workout.id), Type=\(workout.type.rawValue), Date=\(workout.date)")
+            WatchConnectivityManagerWatch.shared.sendWorkoutData(workout)
+            
             withAnimation {
                 showingCompletion = true
             }
         } catch {
-            print("Error saving completed workout: \(error)")
+            print("❌ [Watch] Error saving completed workout: \(error)")
+            if let nsError = error as NSError? {
+                print("❌ [Watch] Error domain: \(nsError.domain), code: \(nsError.code)")
+                print("❌ [Watch] Error userInfo: \(nsError.userInfo)")
+            }
         }
     }
 }

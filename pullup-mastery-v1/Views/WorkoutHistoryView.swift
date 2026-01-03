@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct WorkoutHistoryView: View {
     @Environment(\.modelContext) private var modelContext
@@ -37,11 +38,24 @@ struct WorkoutHistoryView: View {
                         }
                         .padding(.vertical)
                     }
+                    .refreshable {
+                        refreshWorkouts()
+                    }
                 }
             }
         }
         .navigationTitle("Workout History")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            refreshWorkouts()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            refreshWorkouts()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("WatchWorkoutCompleted"))) { _ in
+            // Refresh when workout completed on watch
+            refreshWorkouts()
+        }
         .sheet(item: $selectedWorkout) { workout in
             NavigationView {
                 WorkoutSummaryView(workout: workout, showDeleteButton: true) {
@@ -66,6 +80,26 @@ struct WorkoutHistoryView: View {
 ////                    }
 ////                }
 //            }
+    }
+    
+    private func refreshWorkouts() {
+        print("🔄 [Phone] WorkoutHistoryView refreshWorkouts() called")
+        
+        // Force ModelContext to refresh by processing pending changes
+        modelContext.processPendingChanges()
+        print("🔄 [Phone] WorkoutHistory - Processed pending changes")
+        
+        // Refetch workouts to ensure we have latest data
+        let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        do {
+            let fetchedWorkouts = try modelContext.fetch(descriptor)
+            print("✅ [Phone] WorkoutHistory - Fetched \(fetchedWorkouts.count) workouts")
+        } catch {
+            print("❌ [Phone] WorkoutHistory - Error refreshing workouts: \(error)")
+            if let nsError = error as NSError? {
+                print("❌ [Phone] WorkoutHistory - Error domain: \(nsError.domain), code: \(nsError.code)")
+            }
+        }
     }
     
     private func clearAllWorkouts() {

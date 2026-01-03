@@ -39,78 +39,86 @@ struct LadderVolumeWatchView: View {
     }
     
     var body: some View {
-        VStack(spacing: 8) {
-            // Set progress at top
-            SetProgressWatchView(
-                totalSets: totalLadders,
-                completedSets: completedLadders,
-                currentReps: isCurrentSetConfirmed ? nil : currentLadderCompletedReps
-            )
-            .padding(.top, 8)
-            
-            Spacer()
-            
-            if currentLadder <= totalLadders {
-                if isResting {
-                    // Rest phase
-                    VStack(spacing: 12) {
-                        Text("Next: \(nextRepText)")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        // Timer
-                        CountdownTimerWatchView(initialTime: restTime) {
-                            if !manuallyCompleted {
-                                if isCurrentSetConfirmed {
-                                    completeLadder()
-                                } else {
-                                    withAnimation {
-                                        isResting = false
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Set Complete / Undo Set Complete buttons
-                        if currentLadderReps.count > 0 {
-                            if isCurrentSetConfirmed {
-                                Button(action: undoSetComplete) {
-                                    Text("Undo Set Complete")
-                                        .font(.caption)
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(.orange)
-                            } else {
-                                Button(action: completeSet) {
-                                    Text("Set Complete")
-                                        .font(.caption)
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .tint(.green)
-                            }
-                        }
-                    }
-                } else {
-                    // Active rep phase
-                    VStack(spacing: 16) {
-                        Text("\(currentRepInLadder) Rep\(currentRepInLadder == 1 ? "" : "s")")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        
-                        Button(action: completeCurrentRep) {
-                            Text("Rep Complete")
+        ZStack {
+            // Main content
+            VStack(spacing: 8) {
+                // Set progress at top
+                SetProgressWatchView(
+                    totalSets: totalLadders,
+                    completedSets: completedLadders,
+//                    currentReps: isCurrentSetConfirmed ? nil : currentLadderCompletedReps
+                )
+                .padding(.top, 8)
+                
+                Spacer()
+                
+                if currentLadder <= totalLadders {
+                    if isResting {
+                        // Rest phase
+                        VStack(spacing: 12) {
+                            Text("Next: \(nextRepText)")
                                 .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            // Timer removed from here - now in overlay below
+                            
+                            // Set Complete / Undo Set Complete buttons
+                            if currentLadderReps.count > 0 {
+                                if isCurrentSetConfirmed {
+                                    Button(action: undoSetComplete) {
+                                        Text("Undo Set Complete")
+                                            .font(.caption)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .tint(.orange)
+                                } else {
+                                    Button(action: completeSet) {
+                                        Text("Set Complete")
+                                            .font(.caption)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.green)
+                                }
+                            }
                         }
-                        .buttonStyle(.borderedProminent)
+                    } else {
+                        // Active rep phase
+                        VStack(spacing: 16) {
+                            Text("\(currentRepInLadder) Rep\(currentRepInLadder == 1 ? "" : "s")")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            
+                            Button(action: completeCurrentRep) {
+                                Text("Rep Complete")
+                                    .font(.headline)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
                     }
                 }
+                
+                Spacer()
             }
+            .animation(.easeInOut(duration: 0.3), value: isResting)
+            .animation(.easeInOut(duration: 0.3), value: currentLadder)
+            .animation(.easeInOut(duration: 0.3), value: currentRepInLadder)
             
-            Spacer()
+            // Timer overlay - appears on top when resting
+            if isResting {
+                CountdownTimerWatchView(initialTime: restTime) {
+                    if !manuallyCompleted {
+                        if isCurrentSetConfirmed {
+                            completeLadder()
+                        } else {
+                            withAnimation {
+                                isResting = false
+                            }
+                        }
+                    }
+                }
+                .zIndex(1000) // Ensure it's on top
+            }
         }
-        .animation(.easeInOut(duration: 0.3), value: isResting)
-        .animation(.easeInOut(duration: 0.3), value: currentLadder)
-        .animation(.easeInOut(duration: 0.3), value: currentRepInLadder)
     }
     
     private func completeCurrentRep() {

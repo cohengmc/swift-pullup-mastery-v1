@@ -32,6 +32,7 @@ struct CountdownTimerWatchView: View {
             Text(timerManager.timeString)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .monospacedDigit()
+                .padding(.top, 8)
             
             if timerManager.timeRemaining > 0 {
                 Text("Rest")
@@ -43,6 +44,8 @@ struct CountdownTimerWatchView: View {
                     .foregroundColor(.green)
                     .fontWeight(.semibold)
             }
+            
+            Spacer()
         }
         .frame(width: screenWidth, height: screenHeight)
         .overlay(
@@ -59,6 +62,33 @@ struct CountdownTimerWatchView: View {
                 .animation(.linear(duration: 0.1), value: timerManager.progress)
         )
         .ignoresSafeArea()
+        .overlay(
+            // Fast forward button for testing (DEBUG only)
+            Group {
+                #if DEBUG
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            timerManager.fastForwardTo5Seconds()
+                        }) {
+                            Image(systemName: "forward.fill")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Color.blue.opacity(0.7))
+                                .clipShape(Circle())
+                        }
+                        .padding(.trailing, 8)
+                        .padding(.bottom, 8)
+                    }
+                }
+                #else
+                EmptyView()
+                #endif
+            }
+        )
         .onAppear {
             timerManager.startTimer(duration: initialTime, timerID: timerID)
         }
@@ -164,6 +194,18 @@ class CountdownTimerManagerWatch: ObservableObject {
         if currentTimerID == timerID {
             stopTimer()
         }
+    }
+    
+    func fastForwardTo5Seconds() {
+        guard hasStarted, let endTime = timerEndTime else { return }
+        
+        // Set timer to 5 seconds remaining
+        let now = Date()
+        timerEndTime = now.addingTimeInterval(5.0)
+        exactTimeRemaining = 5.0
+        timeRemaining = 5
+        updateProgress()
+        saveTimerState(timerID: currentTimerID)
     }
     
     private func saveTimerState(timerID: UUID?) {

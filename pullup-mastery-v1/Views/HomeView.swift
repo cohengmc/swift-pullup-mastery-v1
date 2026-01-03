@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
@@ -89,11 +90,86 @@ struct HomeView: View {
                 }
             }
         }
+        .onAppear {
+            print("📱 [Phone] HomeView appeared, refreshing workouts...")
+            // Refresh ModelContext to pick up changes from watch app
+            refreshWorkouts()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            print("📱 [Phone] App entered foreground, refreshing workouts...")
+            // Refresh when app comes to foreground
+            refreshWorkouts()
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("WorkoutCompleted"))) { _ in
+            print("📱 [Phone] Received WorkoutCompleted notification")
             // Reset navigation state after user dismisses workout summary
             // Small delay to ensure WorkoutView is fully dismissed
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 navigationResetId = UUID()
+                refreshWorkouts()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("WatchWorkoutCompleted"))) { _ in
+            print("📱 [Phone] Received WatchWorkoutCompleted notification, refreshing workouts...")
+            // Refresh when workout completed on watch
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                navigationResetId = UUID()
+                refreshWorkouts()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("WorkoutDataReceived"))) { notification in
+            print("📱 [Phone] Received WorkoutDataReceived notification")
+            if let workout = notification.userInfo?["workout"] as? Workout {
+                print("📱 [Phone] Saving workout to database: \(workout.id)")
+                modelContext.insert(workout)
+                do {
+                    try modelContext.save()
+                    print("✅ [Phone] Workout saved successfully")
+                    // Refresh workouts to show the new one
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        navigationResetId = UUID()
+                        refreshWorkouts()
+                    }
+                } catch {
+                    print("❌ [Phone] Error saving workout: \(error)")
+                }
+            }
+        }
+    }
+    
+    private func refreshWorkouts() {
+        print("🔄 [Phone] refreshWorkouts() called")
+        
+        // Get count before refresh
+        let descriptorBefore = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        let countBefore = (try? modelContext.fetch(descriptorBefore).count) ?? 0
+        print("📊 [Phone] Workout count before refresh: \(countBefore)")
+        
+        // Force ModelContext to refresh by processing pending changes
+        modelContext.processPendingChanges()
+        print("🔄 [Phone] Processed pending changes")
+        
+        // Refetch workouts to ensure we have latest data
+        let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        do {
+            let fetchedWorkouts = try modelContext.fetch(descriptor)
+            print("✅ [Phone] Fetched \(fetchedWorkouts.count) workouts")
+            print("📊 [Phone] Workout count after refresh: \(fetchedWorkouts.count)")
+            
+            if fetchedWorkouts.count != countBefore {
+                print("🔄 [Phone] Workout count changed: \(countBefore) -> \(fetchedWorkouts.count)")
+            }
+            
+            if let latestWorkout = fetchedWorkouts.first {
+                print("✅ [Phone] Latest workout: \(latestWorkout.type.rawValue) on \(latestWorkout.date)")
+                print("✅ [Phone] Latest workout ID: \(latestWorkout.id)")
+            } else {
+                print("ℹ️ [Phone] No workouts found in database")
+            }
+        } catch {
+            print("❌ [Phone] Error refreshing workouts: \(error)")
+            if let nsError = error as NSError? {
+                print("❌ [Phone] Error domain: \(nsError.domain), code: \(nsError.code)")
             }
         }
     }

@@ -19,9 +19,9 @@ struct NumberWheelWatch: View {
     }
     
     var body: some View {
-        VStack(spacing: 8) {
-            Text("\(selectedValue)")
-                .font(.system(size: 36, weight: .bold, design: .rounded))
+        HStack(spacing: 0) {
+            Text("Reps: ")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
             
             // Picker with wheel style - automatically uses Digital Crown when focused on watchOS
@@ -31,15 +31,13 @@ struct NumberWheelWatch: View {
                         .tag(number)
                 }
             }
+            .labelsHidden()
             .pickerStyle(.wheel)
-            .frame(height: 80)
+            .frame(width: 54, height: 60)
+            .font(.system(size: 28, weight: .bold, design: .rounded))
             .onChange(of: selectedValue) { oldValue, newValue in
                 HapticManagerWatch.shared.selection()
             }
-            
-            Text("Reps")
-                .font(.caption)
-                .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
     }
@@ -48,7 +46,7 @@ struct NumberWheelWatch: View {
 #Preview {
     @Previewable @State var selectedValue = 10
     
-    return NumberWheelWatch(selectedValue: $selectedValue, minValue: 0, maxValue: 30)
+    return NumberWheelWatch(selectedValue: $selectedValue, minValue: 0, maxValue: 20)
         .padding()
 }
 
